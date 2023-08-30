@@ -1,0 +1,55 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34004.107
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dotnet-auth-js", "src\dotnet-auth-js\dotnet-auth-js.csproj", "{E927A4BA-7132-42A6-9083-0C7B4D1197EC}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dotnet-auth-js-tests", "test\dotnet-auth-js-tests\dotnet-auth-js-tests.csproj", "{373E09AC-3BE7-4EFE-B435-6CC72DEEFFD6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Identity.DefaultUI.WebSite", "test\testassets\Identity.DefaultUI.WebSite\Identity.DefaultUI.WebSite.csproj", "{B197742A-9991-488A-8899-232A61400264}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AspNetCore.Testing", "test\Microsoft.AspNetCore.Testing\src\Microsoft.AspNetCore.Testing.csproj", "{BE16025A-BFA5-42E8-9A71-2CC6287A54CD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "third-party", "third-party", "{C2A38948-A9EA-49D6-AF3B-A942E19C7271}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{5A76140E-D113-4C54-9181-6F22EB91C64F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{C99DF16C-5BE1-4BCE-BF90-C1717E6ACE23}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E927A4BA-7132-42A6-9083-0C7B4D1197EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E927A4BA-7132-42A6-9083-0C7B4D1197EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E927A4BA-7132-42A6-9083-0C7B4D1197EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E927A4BA-7132-42A6-9083-0C7B4D1197EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{373E09AC-3BE7-4EFE-B435-6CC72DEEFFD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{373E09AC-3BE7-4EFE-B435-6CC72DEEFFD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{373E09AC-3BE7-4EFE-B435-6CC72DEEFFD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{373E09AC-3BE7-4EFE-B435-6CC72DEEFFD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B197742A-9991-488A-8899-232A61400264}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B197742A-9991-488A-8899-232A61400264}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B197742A-9991-488A-8899-232A61400264}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B197742A-9991-488A-8899-232A61400264}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE16025A-BFA5-42E8-9A71-2CC6287A54CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE16025A-BFA5-42E8-9A71-2CC6287A54CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE16025A-BFA5-42E8-9A71-2CC6287A54CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE16025A-BFA5-42E8-9A71-2CC6287A54CD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E927A4BA-7132-42A6-9083-0C7B4D1197EC} = {5A76140E-D113-4C54-9181-6F22EB91C64F}
+		{373E09AC-3BE7-4EFE-B435-6CC72DEEFFD6} = {C99DF16C-5BE1-4BCE-BF90-C1717E6ACE23}
+		{B197742A-9991-488A-8899-232A61400264} = {C2A38948-A9EA-49D6-AF3B-A942E19C7271}
+		{BE16025A-BFA5-42E8-9A71-2CC6287A54CD} = {C2A38948-A9EA-49D6-AF3B-A942E19C7271}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F57B2281-52DC-45AF-A010-AA17A544CA1C}
+	EndGlobalSection
+EndGlobal

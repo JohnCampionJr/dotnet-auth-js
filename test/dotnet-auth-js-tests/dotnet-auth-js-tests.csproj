@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ContainsFunctionalTestAssets>true</ContainsFunctionalTestAssets>
+	<TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AngleSharp" Version="0.9.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0-preview.7.23375.9" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.0-preview.7.23375.9" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
+    <PackageReference Include="xunit" Version="2.4.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+	<TestAssetProjectReference Include="..\testassets\Identity.DefaultUI.WebSite\Identity.DefaultUI.WebSite.csproj" RelativeFolder="" SkipBuild="true" />
+	<ProjectReference Include="@(TestAssetProjectReference)" />
+	<ProjectReference Include="..\..\src\dotnet-auth-js\dotnet-auth-js.csproj" />
+	<ProjectReference Include="..\Microsoft.AspNetCore.Testing\src\Microsoft.AspNetCore.Testing.csproj" />
+  </ItemGroup>
+  <Import Project="$(MvcTestingTargets)" Condition="'$(MvcTestingTargets)' != ''" />
+
+</Project>
