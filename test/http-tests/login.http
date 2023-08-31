@@ -1,0 +1,22 @@
+# login tests
+### login and get token
+# @name auth
+POST /identity/login
+Content-Type: application/json
+{
+  "username": "{{email}}",
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+@auth={{response.parsedBody}}
+
+### login with google
+GET /account/googlelogin
+
+
+### resend confirmation email
+POST /resendconfirmationemail
+Content-Type: application/json
+{
+  "email": "{{email}}"
+}

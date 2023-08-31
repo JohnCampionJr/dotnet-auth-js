@@ -1,0 +1,14 @@
+# the imported variable is automatically called if not cached
+# @import ./login.http
+# @ref auth
+
+###
+POST /identity/refresh
+Content-Type: application/json
+{
+  "refreshToken": "{{auth.refresh_token}}"
+}
+
+###
+GET /identity/account/info
+Authorization: Bearer {{auth.access_token}}

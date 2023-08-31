@@ -1,0 +1,42 @@
+# register, login and test generated token tests
+
+### register
+POST /identity/register
+Content-Type: application/json
+{
+  "username": "{{email}}",
+  "password": "{{password}}",
+  "email": "{{email}}"
+}
+
+
+### login and get token
+# @name auth
+POST /identity/login
+Content-Type: application/json
+{
+  "username": "{{email}}",
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+@auth={{response.parsedBody}}
+
+### test token 
+# @ref auth
+GET /auth/hello
+Authorization: Bearer {{ auth.access_token }}
+
+
+###
+# @name gen
+# @ref auth
+GET /auth/testtoken
+Authorization: Bearer {{auth.access_token}}
+
+@gen={{response.parsedBody}}
+
+### 
+# @ref gen
+GET /auth/hello
+Authorization: Bearer {{gen.accessToken}}
+

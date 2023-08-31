@@ -1,0 +1,23 @@
+# httpYac - https://httpyac.github.io/guide/
+###
+POST /api/people
+Content-Type: application/json
+{
+  "name": "John Smith",
+  "emailAddress": "test@gmal.com",
+  "age": "20"
+}
+
+?? status == 201
+?? body age == 20
+###
+
+POST /api/people
+Content-Type: application/json
+{
+  "name": "John Smith",
+  "emailAddress": "test@gmail.com",
+  "age": "20"
+}
+
+?? status == 400

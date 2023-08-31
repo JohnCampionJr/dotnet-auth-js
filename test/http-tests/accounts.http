@@ -1,0 +1,9 @@
+### register
+
+POST /identity/register
+Content-Type: application/json
+{
+  "username": "{{email}}",
+  "password": "{{password}}",
+  "email": "{{email}}"
+}
