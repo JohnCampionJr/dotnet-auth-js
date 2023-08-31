@@ -13,10 +13,10 @@ internal sealed class BearerTokenConfigureOptions(IDataProtectionProvider dp) : 
 
     public void Configure(string? schemeName, BearerTokenOptions options)
     {
-        //if (schemeName is null)
-        //{
-        //    return;
-        //}
+        if (schemeName is null)
+        {
+            return;
+        }
 
         options.BearerTokenProtector = new TicketDataFormat(dp.CreateProtector(_primaryPurpose, schemeName, "BearerToken"));
         options.RefreshTokenProtector = new TicketDataFormat(dp.CreateProtector(_primaryPurpose, schemeName, "RefreshToken"));
