@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Routing;
 /// <summary>
 /// Provides extension methods for <see cref="IEndpointRouteBuilder"/> to add identity endpoints.
 /// </summary>
-public static class IdentityApiEndpointRouteBuilderExtensions
+public static partial class IdentityApiEndpointRouteBuilderExtensions
 {
     /// <summary>
     /// Add endpoints for registering, logging in, and logging out using ASP.NET Core Identity.

@@ -22,6 +22,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "playground", "src\playground\playground.csproj", "{04002F82-A3D3-426F-8C8A-47937755A64E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +46,10 @@ Global
 		{BE16025A-BFA5-42E8-9A71-2CC6287A54CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BE16025A-BFA5-42E8-9A71-2CC6287A54CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BE16025A-BFA5-42E8-9A71-2CC6287A54CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{04002F82-A3D3-426F-8C8A-47937755A64E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04002F82-A3D3-426F-8C8A-47937755A64E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04002F82-A3D3-426F-8C8A-47937755A64E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04002F82-A3D3-426F-8C8A-47937755A64E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -53,6 +59,7 @@ Global
 		{373E09AC-3BE7-4EFE-B435-6CC72DEEFFD6} = {C99DF16C-5BE1-4BCE-BF90-C1717E6ACE23}
 		{B197742A-9991-488A-8899-232A61400264} = {C2A38948-A9EA-49D6-AF3B-A942E19C7271}
 		{BE16025A-BFA5-42E8-9A71-2CC6287A54CD} = {C2A38948-A9EA-49D6-AF3B-A942E19C7271}
+		{04002F82-A3D3-426F-8C8A-47937755A64E} = {5A76140E-D113-4C54-9181-6F22EB91C64F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F57B2281-52DC-45AF-A010-AA17A544CA1C}

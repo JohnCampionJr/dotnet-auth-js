@@ -11,6 +11,6 @@ A project expanding on .NET 8.0's Minimal API Auth
 [Original Identity and Minimal API Endpoints Tests](https://github.com/dotnet/aspnetcore/tree/main/src/Identity/test/Identity.FunctionalTests)
 [Microsoft.AspNetCore.Testing (DotNet Internal Project)](https://github.com/dotnet/aspnetcore/tree/main/src/Testing/src)
 This may get renamed [#49776](https://github.com/dotnet/aspnetcore/issues/49776)
-
+[Rick Strahl's Work on Combining Cookie and Token](https://weblog.west-wind.com/posts/2022/Mar/29/Combining-Bearer-Token-and-Cookie-Auth-in-ASPNET)
 
 

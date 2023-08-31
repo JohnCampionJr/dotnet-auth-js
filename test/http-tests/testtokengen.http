@@ -21,17 +21,22 @@ Content-Type: application/json
 }
 @auth={{response.parsedBody}}
 
-### test token 
+### test cookie auth
 # @ref auth
 GET /auth/hello
-Authorization: Bearer {{ auth.access_token }}
+# Authorization: Bearer {{ auth.accessToken }}
 
+### test token auth
+# @no-cookie-jar
+# @ref auth
+GET /auth/hello
+Authorization: Bearer {{ auth.accessToken }}
 
 ###
 # @name gen
 # @ref auth
 GET /auth/testtoken
-Authorization: Bearer {{auth.access_token}}
+Authorization: Bearer {{auth.accessToken}}
 
 @gen={{response.parsedBody}}
 

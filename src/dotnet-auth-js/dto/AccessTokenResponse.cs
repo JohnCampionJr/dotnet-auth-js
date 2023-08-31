@@ -1,7 +1,7 @@
 ﻿/// <summary>
 /// The JSON data transfer object for the bearer token response.
 /// </summary>
-internal sealed class AccessTokenResponse
+public sealed class AccessTokenResponse
 {
     /// <summary>
     /// The value is always "Bearer" which indicates this response provides a "Bearer" token

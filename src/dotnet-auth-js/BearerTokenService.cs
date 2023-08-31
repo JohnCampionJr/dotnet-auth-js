@@ -10,9 +10,9 @@ using Microsoft.AspNetCore.Authentication.BearerToken;
 // Based off of the BearerTokenHandler
 // https://github.com/dotnet/aspnetcore/blob/main/src/Security/Authentication/BearerToken/src/BearerTokenHandler.cs
 
-internal sealed class BearerTokenService(IOptionsMonitor<BearerTokenOptions> optionsMonitor, TimeProvider timeProvider)
+public sealed class BearerTokenService(IOptionsMonitor<BearerTokenOptions> optionsMonitor, TimeProvider timeProvider)
 {
-    public AccessTokenResponse Generate(ClaimsPrincipal user, AuthenticationProperties? properties)
+    public AccessTokenResponse Generate(ClaimsPrincipal user, AuthenticationProperties? properties = null)
     {
         var utcNow = timeProvider.GetUtcNow();
         var options = optionsMonitor.Get(IdentityConstants.BearerScheme);
