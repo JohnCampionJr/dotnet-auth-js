@@ -14,6 +14,7 @@ public sealed class BearerTokenService(IOptionsMonitor<BearerTokenOptions> optio
 {
     public AccessTokenResponse Generate(
         ClaimsPrincipal user,
+        string authenticationScheme,
         AuthenticationProperties? properties = null
     )
     {
@@ -26,27 +27,28 @@ public sealed class BearerTokenService(IOptionsMonitor<BearerTokenOptions> optio
         return new AccessTokenResponse
         {
             AccessToken = options.BearerTokenProtector.Protect(
-                CreateBearerTicket(user, properties)
+                CreateBearerTicket(user, authenticationScheme, properties)
             ),
-            ExpiresIn = (long)options.BearerTokenExpiration.TotalSeconds,
+            ExpiresInSeconds = (long)options.BearerTokenExpiration.TotalSeconds,
             RefreshToken = options.RefreshTokenProtector.Protect(
-                CreateRefreshTicket(user, utcNow + options.RefreshTokenExpiration)
+                CreateRefreshTicket(user, authenticationScheme, utcNow + options.RefreshTokenExpiration)
             ),
         };
     }
 
     private AuthenticationTicket CreateBearerTicket(
         ClaimsPrincipal user,
+        string authenticationScheme,
         AuthenticationProperties properties
-    ) => new(user, properties, $"{IdentityConstants.BearerScheme}:AccessToken");
+    ) => new(user, properties, $"{authenticationScheme}:AccessToken");
 
-    private AuthenticationTicket CreateRefreshTicket(ClaimsPrincipal user, DateTimeOffset expires)
+    private AuthenticationTicket CreateRefreshTicket(ClaimsPrincipal user, string authenticationScheme, DateTimeOffset expires)
     {
         var refreshProperties = new AuthenticationProperties { ExpiresUtc = expires };
         return new AuthenticationTicket(
             user,
             refreshProperties,
-            $"{IdentityConstants.BearerScheme}:RefreshToken"
+            $"{authenticationScheme}:RefreshToken"
         );
     }
 }

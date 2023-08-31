@@ -8,6 +8,9 @@ A project expanding on .NET 8.0's Minimal API Auth
 
 [Alternate scheme forwarder without needing a custom one](https://github.com/dotnet/aspnetcore/blob/main/src/Security/samples/PathSchemeSelection/Startup.cs)
 
+# Post Preview 7 changes
+- AccessTokenResponse JSON Changes
+
 # Credits
 
 [Original Minimal API Identity Endpoints](https://github.com/dotnet/aspnetcore/blob/main/src/Identity/Core/src/IdentityApiEndpointRouteBuilderExtensions.cs)

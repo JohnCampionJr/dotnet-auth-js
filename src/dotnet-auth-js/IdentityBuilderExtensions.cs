@@ -87,7 +87,7 @@ public static class AuthenticationBuilderExtensions
     public static AuthenticationBuilder AddCombinedSchemes(this AuthenticationBuilder builder)
     {
         builder
-            .AddBearerToken(IdentityConstants.BearerScheme)
+            .AddJcampBearerToken(IdentityConstants.BearerScheme)
             .AddIdentityCookies(
                 (c) =>
                 {

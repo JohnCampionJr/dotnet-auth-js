@@ -12,6 +12,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Identity.DefaultUI.WebSite;
 using Identity.DefaultUI.WebSite.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -110,7 +111,7 @@ public class MapIdentityApiTests : LoggedTest
             services.AddSingleton<TimeProvider>(clock);
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
             services.AddIdentityCore<ApplicationUser>().AddApiEndpoints().AddEntityFrameworkStores<ApplicationDbContext>();
-            services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
+            services.AddAuthentication().AddJcampBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.BearerTokenExpiration = expireTimeSpan;
             });
@@ -185,7 +186,7 @@ public class MapIdentityApiTests : LoggedTest
         {
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
             services.AddIdentityCore<ApplicationUser>().AddApiEndpoints().AddEntityFrameworkStores<ApplicationDbContext>();
-            services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
+            services.AddAuthentication().AddJcampBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.Events.OnMessageReceived = context =>
                 {
@@ -270,7 +271,7 @@ public class MapIdentityApiTests : LoggedTest
             services.AddSingleton<TimeProvider>(clock);
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
             services.AddIdentityCore<ApplicationUser>().AddApiEndpoints().AddEntityFrameworkStores<ApplicationDbContext>();
-            services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
+            services.AddAuthentication().AddJcampBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.RefreshTokenExpiration = expireTimeSpan;
             });
@@ -1204,8 +1205,23 @@ public class MapIdentityApiTests : LoggedTest
         where TUser : class, new()
         where TContext : DbContext
     {
-        return services.AddDbContext<TContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
-            .AddIdentityApiEndpoints<TUser>().AddEntityFrameworkStores<TContext>();
+        // JJC Had to do this because composite identity handler is internal
+        services
+         .AddDbContext<TContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
+         .AddAuthentication(MyIdentityConstants.BearerAndApplicationScheme)
+         .AddScheme<AuthenticationSchemeOptions, CompositeIdentityHandler>(MyIdentityConstants.BearerAndApplicationScheme, null, compositeOptions =>
+         {
+             compositeOptions.ForwardDefault = IdentityConstants.BearerScheme;
+             compositeOptions.ForwardAuthenticate = MyIdentityConstants.BearerAndApplicationScheme;
+         })
+         .AddJcampBearerToken(IdentityConstants.BearerScheme)
+         .AddIdentityCookies();
+
+        return services.AddIdentityCore<TUser>(_ => { })
+            .AddApiEndpoints().AddEntityFrameworkStores<TContext>();
+
+        //return services.AddDbContext<TContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
+        //    .AddIdentityApiEndpoints<TUser>().AddEntityFrameworkStores<TContext>();
     }
 
     private static IdentityBuilder AddIdentityApiEndpoints(IServiceCollection services)
@@ -1215,7 +1231,7 @@ public class MapIdentityApiTests : LoggedTest
     {
         services
             .AddAuthentication()
-            .AddBearerToken(IdentityConstants.BearerScheme);
+            .AddJcampBearerToken(IdentityConstants.BearerScheme);
 
         return services
             .AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))

@@ -1,4 +1,7 @@
 ﻿using System.Text.Json.Serialization;
+
+namespace jcamp.BearerToken;
+
 /// <summary>
 /// The JSON data transfer object for the bearer token response.
 /// </summary>

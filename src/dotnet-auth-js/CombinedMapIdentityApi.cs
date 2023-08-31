@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.DTO;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Options;
+using System.Net;
 
 namespace Microsoft.AspNetCore.Routing;
 
@@ -33,7 +35,7 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             signInManager.PrimaryAuthenticationScheme = cookieMode == true ? IdentityConstants.ApplicationScheme : IdentityConstants.BearerScheme;
             var isPersistent = persistCookies ?? true;
 
-            var user = await signInManager.UserManager.FindByNameAsync(login.Username);
+    var user = await signInManager.UserManager.FindByNameAsync(login.Username);
 
             if (user is null)
             {
@@ -57,7 +59,7 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             if (result.Succeeded)
             {
                 var principal = await signInManager.CreateUserPrincipalAsync(user);
-                var token = sp.GetRequiredService<BearerTokenService>().Generate(principal);
+                var token = sp.GetRequiredService<BearerTokenService>().Generate(principal, IdentityConstants.BearerScheme);
                 return TypedResults.Ok(token);
             }
 
@@ -66,4 +68,8 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
         return new IdentityEndpointsConventionBuilder(routeGroup);
     }
 
+    private static Task onMessageReceived(MessageReceivedContext context)
+    {
+        throw new NotImplementedException();
+    }
 }
