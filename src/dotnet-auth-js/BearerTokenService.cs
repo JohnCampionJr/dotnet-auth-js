@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Security.Claims;
@@ -12,7 +12,10 @@ using Microsoft.AspNetCore.Authentication.BearerToken;
 
 public sealed class BearerTokenService(IOptionsMonitor<BearerTokenOptions> optionsMonitor, TimeProvider timeProvider)
 {
-    public AccessTokenResponse Generate(ClaimsPrincipal user, AuthenticationProperties? properties = null)
+    public AccessTokenResponse Generate(
+        ClaimsPrincipal user,
+        AuthenticationProperties? properties = null
+    )
     {
         var utcNow = timeProvider.GetUtcNow();
         var options = optionsMonitor.Get(IdentityConstants.BearerScheme);
@@ -22,22 +25,28 @@ public sealed class BearerTokenService(IOptionsMonitor<BearerTokenOptions> optio
 
         return new AccessTokenResponse
         {
-            AccessToken = options.BearerTokenProtector.Protect(CreateBearerTicket(user, properties)),
+            AccessToken = options.BearerTokenProtector.Protect(
+                CreateBearerTicket(user, properties)
+            ),
             ExpiresIn = (long)options.BearerTokenExpiration.TotalSeconds,
-            RefreshToken = options.RefreshTokenProtector.Protect(CreateRefreshTicket(user, utcNow + options.RefreshTokenExpiration)),
+            RefreshToken = options.RefreshTokenProtector.Protect(
+                CreateRefreshTicket(user, utcNow + options.RefreshTokenExpiration)
+            ),
         };
-
     }
 
-    private AuthenticationTicket CreateBearerTicket(ClaimsPrincipal user, AuthenticationProperties properties)
-        => new(user, properties, $"{IdentityConstants.BearerScheme}:AccessToken");
+    private AuthenticationTicket CreateBearerTicket(
+        ClaimsPrincipal user,
+        AuthenticationProperties properties
+    ) => new(user, properties, $"{IdentityConstants.BearerScheme}:AccessToken");
 
     private AuthenticationTicket CreateRefreshTicket(ClaimsPrincipal user, DateTimeOffset expires)
     {
-        var refreshProperties = new AuthenticationProperties
-        {
-            ExpiresUtc = expires
-        };
-        return new AuthenticationTicket(user, refreshProperties, $"{IdentityConstants.BearerScheme}:RefreshToken");
+        var refreshProperties = new AuthenticationProperties { ExpiresUtc = expires };
+        return new AuthenticationTicket(
+            user,
+            refreshProperties,
+            $"{IdentityConstants.BearerScheme}:RefreshToken"
+        );
     }
 }
