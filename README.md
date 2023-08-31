@@ -4,6 +4,9 @@ A project expanding on .NET 8.0's Minimal API Auth
 # Related Issues
 [#49957 BearerAndApplicationScheme](https://github.com/dotnet/aspnetcore/issues/49957)
 
+# Ideas
+
+[Alternate scheme forwarder without needing a custom one](https://github.com/dotnet/aspnetcore/blob/main/src/Security/samples/PathSchemeSelection/Startup.cs)
 
 # Credits
 
