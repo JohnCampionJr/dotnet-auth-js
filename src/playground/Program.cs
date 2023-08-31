@@ -12,37 +12,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddAuthorization();
+
 var dbConnection = new SqliteConnection("DataSource=:memory:");
 builder.Services.AddSingleton(_ => dbConnection);
-builder.Services
-    .AddAuthentication(x =>
-    {
-        x.DefaultScheme = MyIdentityConstants.BearerAndApplicationScheme;
-    })
-    .AddPolicyScheme(
-        MyIdentityConstants.BearerAndApplicationScheme,
-        MyIdentityConstants.BearerAndApplicationScheme,
-        options =>
-        {
-            options.ForwardDefaultSelector = context =>
-            {
-                string? authorization = context.Request.Headers[HeaderNames.Authorization];
-                if (authorization is not null && authorization.StartsWith("Bearer "))
-                    return IdentityConstants.BearerScheme;
 
-                return IdentityConstants.ApplicationScheme;
-            };
-        }
-    )
-    .AddBearerToken(IdentityConstants.BearerScheme)
-    .AddIdentityCookies(
-        (c) =>
-        {
-            // just so show how to use this
-            c.ApplicationCookie?.Configure(o => o.LoginPath = "/account/login");
-        }
-    );
+builder.Services.AddCombinedAuthorization();
+builder.Services.AddCombinedAuthentication();
 
 builder.Services
     .AddDbContext<ApplicationDbContext>(
@@ -50,9 +25,7 @@ builder.Services
     )
     .AddIdentityCore<ApplicationUser>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddApiEndpoints();
-
-builder.Services.AddTransient<BearerTokenService>();
+    .AddCombinedIdentityServices();
 
 var app = builder.Build();
 
@@ -67,9 +40,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGroup("/identity").MyMapIdentityApi<ApplicationUser>();
+app.MapGroup("/identity").ComboMapIdentityApi<ApplicationUser>();
+
+app.MapGet("/cookieonly", (ClaimsPrincipal user) => $"With Cookie: Hello, {user.Identity?.Name}!")
+    .RequireAuthorization(MyPolicyConstants.ApplicationOnly);
+
+app.MapGet("/tokenonly", (ClaimsPrincipal user) => $"With Token: Hello, {user.Identity?.Name}!")
+    .RequireAuthorization(MyPolicyConstants.BearerOnly);
 
 var authGroup = app.MapGroup("/auth").RequireAuthorization();
-authGroup.MapGet("/hello", (ClaimsPrincipal user) => $"Hello, {user.Identity?.Name}!");
+authGroup.MapGet("/hello", (ClaimsPrincipal user) => $"With Either: Hello, {user.Identity?.Name}!");
 
 authGroup.MapGet(
     "/testtoken",

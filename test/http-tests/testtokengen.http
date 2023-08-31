@@ -32,6 +32,27 @@ GET /auth/hello
 GET /auth/hello
 Authorization: Bearer {{ auth.accessToken }}
 
+
+### test token only endpoint with token
+# @no-cookie-jar
+# @ref auth
+GET /tokenonly
+Authorization: Bearer {{ auth.accessToken }}
+
+### test token only endpoint with cookie
+# @ref auth
+GET /tokenonly
+
+### test token only endpoint with cookie
+# @ref auth
+GET /cookieonly
+
+### test token only endpoint with token
+# @no-cookie-jar
+# @ref auth
+GET /cookieonly
+Authorization: Bearer {{ auth.accessToken }}
+
 ###
 # @name gen
 # @ref auth
