@@ -2,11 +2,13 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Security.Claims;
+using jcamp.BearerToken;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication;
+using BearerTokenOptions = Microsoft.AspNetCore.Authentication.BearerToken.BearerTokenOptions;
 
-using jcamp.BearerToken;
+// using jcamp.BearerToken;
 
 
 // Based off of the BearerTokenHandler
@@ -28,6 +30,7 @@ public sealed class BearerTokenService(IOptionsMonitor<BearerTokenOptions> optio
 
         return new AccessTokenResponse
         {
+            TokenType = authenticationScheme,
             AccessToken = options.BearerTokenProtector.Protect(
                 CreateBearerTicket(user, authenticationScheme, properties)
             ),

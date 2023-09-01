@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using System.Security.Claims;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,8 +17,38 @@ builder.Services.AddSwaggerGen();
 var dbConnection = new SqliteConnection("DataSource=:memory:");
 builder.Services.AddSingleton(_ => dbConnection);
 
-builder.Services.AddCombinedAuthorization();
-builder.Services.AddCombinedAuthentication();
+builder.Services.AddAuthorization(a =>
+{
+    a.AddCombinedPolicies();
+});
+
+builder.Services
+    .AddAuthentication(UnAuthConstants.IdentityScheme)
+    // .AddAuthentication(a =>
+    // {
+    //     a.DefaultScheme = UnAuthConstants.IdentityScheme;
+    // })
+    .AddBearerToken(IdentityConstants.BearerScheme)
+    .AddCookie(IdentityConstants.ApplicationScheme)
+    .AddScheme<UnAuthOptions, UnAuthHandler>(UnAuthConstants.IdentityScheme, _ => { })
+    .AddScheme<UnAuthOptions, UnAuthHandler>(IdentityConstants.TwoFactorUserIdScheme, _ => { });
+    // .AddIdentityCookies(
+    //     (c) =>
+    //     {
+    //         // this makes the site return 401s rather than 302 for cookie only paths
+    //         c.ApplicationCookie?.Configure(
+    //             o => o.ForwardChallenge = IdentityConstants.BearerScheme
+    //         );
+    //     }
+    ;
+
+builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<UnAuthOptions>, UnAuthConfigureOptions>());
+
+
+
+
+// builder.Services.AddCombinedAuthorization();
+// builder.Services.AddCombinedAuthentication();
 
 builder.Services
     .AddDbContext<ApplicationDbContext>(
@@ -25,7 +56,10 @@ builder.Services
     )
     .AddIdentityCore<ApplicationUser>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddCombinedIdentityServices();
+    .AddApiEndpoints()
+    .AddDefaultTokenProviders();
+
+builder.Services.AddTransient<BearerTokenService>();
 
 var app = builder.Build();
 

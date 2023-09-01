@@ -111,6 +111,68 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
 
             return TypedResults.Problem(result.ToString(), statusCode: StatusCodes.Status401Unauthorized);
         });
+        
+        routeGroup.MapPost("/unauthlogin", async Task<Results<Ok<AccessTokenResponse>, EmptyHttpResult, ProblemHttpResult>>
+            (HttpContext ctx, [FromBody] LoginRequest login, [FromQuery] bool? cookieMode, [FromQuery] bool? persistCookies, [FromServices] IServiceProvider sp) =>
+        {
+            var signInManager = sp.GetRequiredService<SignInManager<TUser>>();
+
+            signInManager.PrimaryAuthenticationScheme = UnAuthConstants.IdentityScheme; 
+            // signInManager.PrimaryAuthenticationScheme = cookieMode == true ? IdentityConstants.ApplicationScheme : IdentityConstants.BearerScheme;
+            var isPersistent = persistCookies ?? true;
+
+            var result = (await signInManager.PasswordSignInAsync(login.Username, login.Password,
+                isPersistent, lockoutOnFailure: true)).ToUnAuth();
+
+            if (result.RequiresTwoFactor)
+            {
+                if (!string.IsNullOrEmpty(login.TwoFactorCode))
+                {
+                    result = (await signInManager.TwoFactorAuthenticatorSignInAsync(login.TwoFactorCode, isPersistent, rememberClient: isPersistent)).ToUnAuth();
+                }
+                else if (!string.IsNullOrEmpty(login.TwoFactorRecoveryCode))
+                {
+                    result = (await signInManager.TwoFactorRecoveryCodeSignInAsync(login.TwoFactorRecoveryCode)).ToUnAuth();
+                }
+            }
+
+            if (result.Succeeded)
+            {
+                // The signInManager already produced the needed response in the form of a cookie or bearer token.
+                return TypedResults.Empty;
+            }
+            
+            if (ctx.Items.TryGetValue(UnAuthConstants.TwoFactorUserIdToken, out var obj) && obj is string token)
+            {
+                result.TwoFactorUserIdToken = token;
+            }
+            if (ctx.Items.TryGetValue(UnAuthConstants.TwoFactorRememberToken, out var obj2) && obj2 is string token2)
+            {
+                result.TwoFactorRememberToken = token2;
+            }
+            
+            return TypedResults.Problem(result.ToString(), statusCode: StatusCodes.Status401Unauthorized, extensions: result.ToDictionary());
+        });
+        
+        routeGroup.MapPost("/unauth2falogin", async Task<Results<Ok<AccessTokenResponse>, EmptyHttpResult, ProblemHttpResult>>
+            (HttpContext ctx, [FromBody] TwoFactorLoginRequest login, [FromQuery] bool? cookieMode, [FromQuery] bool? persistCookies, [FromServices] IServiceProvider sp) =>
+        {
+            var signInManager = sp.GetRequiredService<SignInManager<TUser>>();
+
+            signInManager.PrimaryAuthenticationScheme = UnAuthConstants.IdentityScheme; 
+            // signInManager.PrimaryAuthenticationScheme = cookieMode == true ? IdentityConstants.ApplicationScheme : IdentityConstants.BearerScheme;
+            var isPersistent = persistCookies ?? true;
+
+            var result = await signInManager.TwoFactorAuthenticatorSignInAsync(login.TwoFactorCode, false, false);
+            
+            if (result.Succeeded)
+            {
+                // The signInManager already produced the needed response in the form of a cookie or bearer token.
+                return TypedResults.Empty;
+            }
+            
+            return TypedResults.Problem(result.ToString(), statusCode: StatusCodes.Status401Unauthorized);
+        });
 
         routeGroup.MapPost("/refresh", async Task<Results<Ok<AccessTokenResponse>, UnauthorizedHttpResult, SignInHttpResult, ChallengeHttpResult>>
             ([FromBody] RefreshRequest refreshRequest, [FromServices] IServiceProvider sp) =>

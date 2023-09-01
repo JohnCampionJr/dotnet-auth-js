@@ -1,11 +1,9 @@
-﻿using System.Text.Json.Serialization;
-
-namespace jcamp.BearerToken;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// The JSON data transfer object for the bearer token response.
 /// </summary>
-public sealed class AccessTokenResponse
+public sealed class UnAuthTokenResponse
 {
     /// <summary>
     /// The value is always "Bearer" which indicates this response provides a "Bearer" token
@@ -42,5 +40,5 @@ public sealed class AccessTokenResponse
     /// This is serialized as "refresh_token": "{RefreshToken}" using System.Text.Json.
     /// </remarks>
     [JsonPropertyName("refresh_token")]
-    public required string RefreshToken { get; init; }
+    public string? RefreshToken { get; init; }
 }
