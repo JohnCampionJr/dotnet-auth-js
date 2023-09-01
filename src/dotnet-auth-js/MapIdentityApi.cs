@@ -112,46 +112,36 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             return TypedResults.Problem(result.ToString(), statusCode: StatusCodes.Status401Unauthorized);
         });
         
-        routeGroup.MapPost("/unauthlogin", async Task<Results<Ok, Ok<UnAuthTokenResponse>, EmptyHttpResult, ProblemHttpResult>>
+        routeGroup.MapPost("/unauthlogin", async Task<Results<Ok, Ok<UnAuthTokenResponse>, EmptyHttpResult, ProblemHttpResult, BadRequest>>
             (HttpContext ctx, [FromBody] LoginRequest login, [FromQuery] bool? cookieMode, [FromQuery] bool? persistCookies, [FromServices] IServiceProvider sp) =>
         {
-            var signInManager = sp.GetRequiredService<SignInManager<TUser>>();
-
-            signInManager.PrimaryAuthenticationScheme = UnAuthConstants.IdentityScheme;
-
+            // check the requirements first
+            if (!(login is { Username: not (null or ""), Password: not (null or "") } ||
+                login is { Username: null or "", Password: null or "", TwoFactorCode: not null } || 
+                login is { Username: null or "", Password: null or "", TwoFactorRecoveryCode: not null }))
+            {
+                return TypedResults.BadRequest();
+            }
+            
             if (cookieMode is true or false)
             {
                 ctx.Items.Add(UnAuthConstants.CookieMode, cookieMode);
             }
 
-            // signInManager.PrimaryAuthenticationScheme = cookieMode == true ? IdentityConstants.ApplicationScheme : IdentityConstants.BearerScheme;
+            var signInManager = sp.GetRequiredService<SignInManager<TUser>>();
+            signInManager.PrimaryAuthenticationScheme = UnAuthConstants.IdentityScheme;
             var isPersistent = persistCookies ?? true;
-            if (login is { Username: null, Password: null, TwoFactorCode: not null })
+            
+            var result = SignInResult.Failed.ToUnAuth();
+
+            // standard auth
+            if (login is { Username: not null, Password: not null })
             {
-                var user = await signInManager.GetTwoFactorAuthenticationUserAsync();
-                if (user is null) return TypedResults.Problem("Unable to load two-factor authentication user.", statusCode: StatusCodes.Status401Unauthorized);
-                var twoFactorResult = (await signInManager.TwoFactorAuthenticatorSignInAsync(login.TwoFactorCode, isPersistent, rememberClient: isPersistent)).ToUnAuth();
-                if (twoFactorResult.Succeeded) return TypedResults.Ok();
-                return TypedResults.Problem(twoFactorResult.ToString(), statusCode: StatusCodes.Status401Unauthorized);
-                
+                result = (await signInManager.PasswordSignInAsync(login.Username, login.Password!, isPersistent, lockoutOnFailure: true)).ToUnAuth();
             }
 
-            if (login.Username is null || login.Password is null)
-            {
-                return TypedResults.Problem("Validation Problem", statusCode: StatusCodes.Status401Unauthorized);
-            }
-            // var user = await UserManager.FindByNameAsync(userName);
-            // if (user == null)
-            // {
-            //     return SignInResult.Failed;
-            // }
-            //
-            // return await PasswordSignInAsync(user, password, isPersistent, lockoutOnFailure);
-
-            var result = (await signInManager.PasswordSignInAsync(login.Username, login.Password,
-                isPersistent, lockoutOnFailure: true)).ToUnAuth();
-
-            if (result.RequiresTwoFactor)
+            if (result.RequiresTwoFactor || login is { Username: null, Password: null, TwoFactorCode: not (null or "") } or
+                { Username: null, Password: null, TwoFactorRecoveryCode: not (null or "")}) 
             {
                 if (!string.IsNullOrEmpty(login.TwoFactorCode))
                 {
@@ -174,14 +164,16 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             
             if (result.Succeeded)
             {
-                if (ctx.Items.TryGetValue(UnAuthConstants.BearerToken, out var obj3) && obj3 is UnAuthTokenResponse token3)
+                if (ctx.Items.TryGetValue(UnAuthConstants.BearerToken, out var obj3) && obj3 is UnAuthTokenResponse bearerToken)
                 {
-                    token3.RememberToken = result.TwoFactorRememberMeToken;
-                    return TypedResults.Ok(token3);
+                    // set the bearer Token's Remember to the TwoFactor if provided
+                    bearerToken.RememberToken = result.TwoFactorRememberMeToken;
+                    return TypedResults.Ok(bearerToken);
                 }
+                
+                // if no bearer token is available, there is no need to send any other tokens upon success (cookies are set by handler)
                 return TypedResults.Ok();
             }
-
             
             return TypedResults.Problem(result.ToString(), statusCode: StatusCodes.Status401Unauthorized, extensions: result.ToDictionary());
         });
