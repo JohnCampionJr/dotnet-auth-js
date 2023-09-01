@@ -49,6 +49,16 @@ public sealed class UnAuthHandler(
 
         if (Scheme.Name == IdentityConstants.TwoFactorUserIdScheme)
         {
+            
+            if (await GetCookieHandler() is IAuthenticationHandler signInHandler)
+            {
+                var cookieResult = await signInHandler.AuthenticateAsync();
+                if (cookieResult.Succeeded)
+                {
+                    return cookieResult;
+                }
+            }
+
             var token = GetTokenOrNull("TwoFactorUserId");
             if (token is null)
             {
@@ -72,6 +82,15 @@ public sealed class UnAuthHandler(
 
         if (Scheme.Name == IdentityConstants.TwoFactorRememberMeScheme)
         {
+            if (await GetCookieHandler() is IAuthenticationHandler signInHandler)
+            {
+                var cookieResult = await signInHandler.AuthenticateAsync();
+                if (cookieResult.Succeeded)
+                {
+                    return cookieResult;
+                }
+            }
+
             var token = GetTokenOrNull("TwoFactorRemember");
             if (token is null)
             {
@@ -96,9 +115,45 @@ public sealed class UnAuthHandler(
         throw new ArgumentException($"{Scheme.Name} is an unsupported Scheme type for UnAuth");
     }
 
-    protected override Task HandleSignOutAsync(AuthenticationProperties? properties)
+    protected override async Task HandleSignOutAsync(AuthenticationProperties? properties)
     {
-        return Task.CompletedTask;
+        if (Scheme.Name == UnAuthConstants.IdentityScheme)
+        {
+            var cookieMode = CookieMode();
+            
+            if (cookieMode is not false)
+            {
+                if (await schemeProvider.GetSchemeAsync(IdentityConstants.ApplicationScheme) is not null)
+                {
+                    await Context.SignOutAsync(IdentityConstants.ApplicationScheme, properties);
+                }
+
+            }
+            
+            return;
+        }
+        
+        if (Scheme.Name == IdentityConstants.TwoFactorUserIdScheme)
+        {
+            if (await GetCookieHandler() is IAuthenticationSignOutHandler signInHandler)
+            {
+                await signInHandler.SignOutAsync(properties);
+            }
+
+            return;
+        }
+
+        if (Scheme.Name == IdentityConstants.TwoFactorRememberMeScheme)
+        {
+            if (await GetCookieHandler() is IAuthenticationSignOutHandler signInHandler)
+            {
+                await signInHandler.SignOutAsync(properties);
+            }
+
+            return;
+        }
+
+        throw new ArgumentException($"{Scheme.Name} is an unsupported Scheme type for UnAuth");
     }
 
     protected override async Task HandleSignInAsync(
@@ -129,9 +184,9 @@ public sealed class UnAuthHandler(
             if (CookieMode() is not true)
             {
                 // no reason to not let the original bearer token work here.
-                // var response = tokenService.Generate(user, IdentityConstants.BearerScheme, properties);
-                // await Context.Response.WriteAsJsonAsync(response);
-                await Context.SignInAsync(IdentityConstants.BearerScheme, user, properties);
+                var response = tokenService.GenerateIdentity(user, IdentityConstants.BearerScheme, properties);
+                Context.Items.TryAdd(UnAuthConstants.BearerToken, response);
+                // await Context.SignInAsync(IdentityConstants.BearerScheme, user, properties);
             }
 
             return;
@@ -141,14 +196,7 @@ public sealed class UnAuthHandler(
             var response = tokenService.GenerateTwoFactorUserId(user, properties);
             Context.Items.TryAdd(UnAuthConstants.TwoFactorUserIdToken, response.AccessToken);
             
-            var scheme = await schemeProvider.GetSchemeAsync(IdentityConstants.ApplicationScheme);
-            if (scheme is null) return;
-            
-            var handler = await handlers.GetHandlerAsync(Context, IdentityConstants.ApplicationScheme);
-            if (handler is null) return;
-            
-            await handler.InitializeAsync(Scheme, Context);
-            if (handler is IAuthenticationSignInHandler signInHandler)
+            if (await GetCookieHandler() is IAuthenticationSignInHandler signInHandler)
             {
                 await signInHandler.SignInAsync(user, properties);
             }
@@ -167,14 +215,7 @@ public sealed class UnAuthHandler(
             var response = tokenService.GenerateTwoFactorRemember(user, properties);
             Context.Items.TryAdd(UnAuthConstants.TwoFactorRememberToken, response.AccessToken);
             
-            var scheme = await schemeProvider.GetSchemeAsync(IdentityConstants.ApplicationScheme);
-            if (scheme is null) return;
-            
-            var handler = await handlers.GetHandlerAsync(Context, IdentityConstants.ApplicationScheme);
-            if (handler is null) return;
-            
-            await handler.InitializeAsync(Scheme, Context);
-            if (handler is IAuthenticationSignInHandler signInHandler)
+            if (await GetCookieHandler() is IAuthenticationSignInHandler signInHandler)
             {
                 await signInHandler.SignInAsync(user, properties);
             }
@@ -205,5 +246,18 @@ public sealed class UnAuthHandler(
         return authorization.StartsWith(tokenId, StringComparison.Ordinal)
             ? authorization[tokenId.Length..]
             : null;
+    }
+
+    private async Task<IAuthenticationHandler?> GetCookieHandler()
+    {
+        var scheme = await schemeProvider.GetSchemeAsync(IdentityConstants.ApplicationScheme);
+        if (scheme is null) return null;
+            
+        var handler = await handlers.GetHandlerAsync(Context, IdentityConstants.ApplicationScheme);
+        if (handler is null) return null;
+            
+        await handler.InitializeAsync(Scheme, Context);
+
+        return handler;
     }
 }

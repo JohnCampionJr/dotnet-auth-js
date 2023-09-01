@@ -13,7 +13,7 @@ public sealed class UnAuthTokenResponse
     /// This is serialized as "token_type": "Bearer" using System.Text.Json.
     /// </remarks>
     [JsonPropertyName("token_type")]
-    public string TokenType { get; set; } = "Bearer";
+    public string TokenType { get; init; } = "Bearer";
 
     /// <summary>
     /// The opaque bearer token to send as part of the Authorization request header.
@@ -41,4 +41,6 @@ public sealed class UnAuthTokenResponse
     /// </remarks>
     [JsonPropertyName("refresh_token")]
     public string? RefreshToken { get; init; }
+    
+    public string? RememberToken { get; set; }
 }

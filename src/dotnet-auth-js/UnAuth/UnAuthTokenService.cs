@@ -30,7 +30,7 @@ public sealed class UnAuthTokenService(IOptionsMonitor<UnAuthOptions> unAuthOpti
 
         return new UnAuthTokenResponse
         {
-            TokenType = authenticationScheme,
+            // TokenType = authenticationScheme,
             AccessToken = bearerOptions.BearerTokenProtector.Protect(
                 CreateBearerTicket(user, authenticationScheme, properties)
             ),
@@ -54,7 +54,7 @@ public sealed class UnAuthTokenService(IOptionsMonitor<UnAuthOptions> unAuthOpti
 
         return new UnAuthTokenResponse
         {
-            TokenType = IdentityConstants.TwoFactorUserIdScheme,
+            // TokenType = IdentityConstants.TwoFactorUserIdScheme,
             AccessToken = unAuthOptions.TwoFactorUserIdTokenProtector.Protect(
                 CreateBearerTicket(user, IdentityConstants.TwoFactorUserIdScheme, properties)
             ),
@@ -75,7 +75,7 @@ public sealed class UnAuthTokenService(IOptionsMonitor<UnAuthOptions> unAuthOpti
 
         return new UnAuthTokenResponse
         {
-            TokenType = IdentityConstants.TwoFactorRememberMeScheme,
+            // TokenType = IdentityConstants.TwoFactorRememberMeScheme,
             AccessToken = unAuthOptions.TwoFactorRememberTokenProtector.Protect(
                 CreateBearerTicket(user, IdentityConstants.TwoFactorRememberMeScheme, properties)
             ),
