@@ -20,6 +20,16 @@ public sealed class UnAuthHandler(
         "Token expired"
     );
 
+    private bool? CookieMode()
+    {
+        if (Context.Items.TryGetValue(UnAuthConstants.CookieMode, out var obj) && obj is bool mode)
+        {
+            return mode;
+        }
+
+        return null;
+    }
+
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (Scheme.Name == UnAuthConstants.IdentityScheme)
@@ -31,8 +41,8 @@ public sealed class UnAuthHandler(
             }
 
             // Cookie auth will return AuthenticateResult.NoResult() like bearer auth just did if there is no cookie.
-            // if (await schemeProvider.GetSchemeAsync(IdentityConstants.ApplicationScheme) is not null)
-            //     return await Context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+            if (await schemeProvider.GetSchemeAsync(IdentityConstants.ApplicationScheme) is not null)
+                return await Context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
             
             return AuthenticateResult.NoResult();
         }
@@ -98,13 +108,32 @@ public sealed class UnAuthHandler(
     {
         if (Scheme.Name == UnAuthConstants.IdentityScheme)
         {
-            // Cookie auth will return AuthenticateResult.NoResult() like bearer auth just did if there is no cookie.
-           //  if (await schemeProvider.GetSchemeAsync(IdentityConstants.ApplicationScheme) is not null)
-                await Context.SignInAsync(IdentityConstants.ApplicationScheme, user, properties);
+            var cookieMode = CookieMode();
             
-            // var response = tokenService.Generate(user, IdentityConstants.BearerScheme, properties);
-            // await Context.Response.WriteAsJsonAsync(response);
-            await Context.SignInAsync(IdentityConstants.BearerScheme, user, properties);
+            if (cookieMode is not false)
+            {
+                if (await schemeProvider.GetSchemeAsync(IdentityConstants.ApplicationScheme) is not null)
+                {
+                    await Context.SignInAsync(IdentityConstants.ApplicationScheme, user, properties);
+                }
+                else if (cookieMode is true)
+                {
+                    // if cookie mode is specifically requested and provider not registered, throw exception similar to core code
+                    throw new InvalidOperationException();
+                }
+
+                // cookies set this, so need to reset so correct expiration picked up for bearer
+                if (properties is not null) properties.ExpiresUtc = null;
+            }
+
+            if (CookieMode() is not true)
+            {
+                // no reason to not let the original bearer token work here.
+                // var response = tokenService.Generate(user, IdentityConstants.BearerScheme, properties);
+                // await Context.Response.WriteAsJsonAsync(response);
+                await Context.SignInAsync(IdentityConstants.BearerScheme, user, properties);
+            }
+
             return;
         }
         if (Scheme.Name == IdentityConstants.TwoFactorUserIdScheme)

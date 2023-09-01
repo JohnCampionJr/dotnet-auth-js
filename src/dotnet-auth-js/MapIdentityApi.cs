@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -18,8 +19,6 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-
-using jcamp.BearerToken;
 
 namespace Microsoft.AspNetCore.Routing;
 
@@ -117,7 +116,13 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
         {
             var signInManager = sp.GetRequiredService<SignInManager<TUser>>();
 
-            signInManager.PrimaryAuthenticationScheme = UnAuthConstants.IdentityScheme; 
+            signInManager.PrimaryAuthenticationScheme = UnAuthConstants.IdentityScheme;
+
+            if (cookieMode is true or false)
+            {
+                ctx.Items.Add(UnAuthConstants.CookieMode, cookieMode);
+            }
+            
             // signInManager.PrimaryAuthenticationScheme = cookieMode == true ? IdentityConstants.ApplicationScheme : IdentityConstants.BearerScheme;
             var isPersistent = persistCookies ?? true;
 
