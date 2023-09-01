@@ -125,7 +125,7 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             
             if (cookieMode is true or false)
             {
-                ctx.Items.Add(UnAuthConstants.CookieMode, cookieMode);
+                ctx.Items.Add(UnAuthContextItems.CookieMode, cookieMode);
             }
 
             var signInManager = sp.GetRequiredService<SignInManager<TUser>>();
@@ -153,18 +153,18 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
                 }
             }
             
-            if (ctx.Items.TryGetValue(UnAuthConstants.TwoFactorUserIdToken, out var obj) && obj is string token)
+            if (ctx.Items.TryGetValue(UnAuthContextItems.TwoFactorUserId, out var obj) && obj is string token)
             {
                 result.TwoFactorUserIdToken = token;
             }
-            if (ctx.Items.TryGetValue(UnAuthConstants.TwoFactorRememberMeToken, out var obj2) && obj2 is string token2)
+            if (ctx.Items.TryGetValue(UnAuthContextItems.TwoFactorRememberMe, out var obj2) && obj2 is string token2)
             {
                 result.TwoFactorRememberMeToken = token2;
             }
             
             if (result.Succeeded)
             {
-                if (ctx.Items.TryGetValue(UnAuthConstants.BearerToken, out var obj3) && obj3 is UnAuthTokenResponse bearerToken)
+                if (ctx.Items.TryGetValue(UnAuthContextItems.Bearer, out var obj3) && obj3 is UnAuthTokenResponse bearerToken)
                 {
                     // set the bearer Token's Remember to the TwoFactor if provided
                     bearerToken.RememberToken = result.TwoFactorRememberMeToken;

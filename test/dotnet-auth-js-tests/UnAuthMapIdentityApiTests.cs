@@ -1188,7 +1188,7 @@ public partial class UnAuthMapIdentityApiTests : LoggedTest
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.UseTestServer();
         builder.Services.AddSingleton(LoggerFactory);
-        builder.Services.AddAuthorization(o => o.AddUnAuthPolicies());
+        builder.Services.AddUnAuthorization();
 
         var dbConnection = new SqliteConnection("DataSource=:memory:");
         // Dispose SqliteConnection with host by registering as a singleton factory.
@@ -1209,9 +1209,9 @@ public partial class UnAuthMapIdentityApiTests : LoggedTest
             (ClaimsPrincipal user) => $"Hello, {user.Identity?.Name}!");
 
         app.MapGet("/cookie",
-            (ClaimsPrincipal user) => $"Cookie: Hello, {user.Identity?.Name}!").RequireAuthorization(UnAuthConstants.CookieOnlyPolicy);
+            (ClaimsPrincipal user) => $"Cookie: Hello, {user.Identity?.Name}!").RequireAuthorization(UnAuthPolicies.CookieOnly);
         app.MapGet("/bearer",
-            (ClaimsPrincipal user) => $"Bearer: Hello, {user.Identity?.Name}!").RequireAuthorization(UnAuthConstants.BearerOnlyPolicy);
+            (ClaimsPrincipal user) => $"Bearer: Hello, {user.Identity?.Name}!").RequireAuthorization(UnAuthPolicies.BearerOnly);
 
         await dbConnection.OpenAsync();
         await app.Services.GetRequiredService<TContext>().Database.EnsureCreatedAsync();

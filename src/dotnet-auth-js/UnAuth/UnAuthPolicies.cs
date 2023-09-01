@@ -5,10 +5,14 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class UnAuthPolicies
 {
+    
+    public static readonly string BearerOnly = "UnAuth.BearerPolicy";
+    public static readonly string CookieOnly = "UnAuth.CookiePolicy";
+
     public static void AddUnAuthPolicies(this AuthorizationOptions a)
     {
         a.AddPolicy(
-            UnAuthConstants.BearerOnlyPolicy,
+            UnAuthPolicies.BearerOnly,
             p =>
             {
                 p.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
@@ -16,7 +20,7 @@ public static class UnAuthPolicies
             }
         );
         a.AddPolicy(
-            UnAuthConstants.CookieOnlyPolicy,
+            UnAuthPolicies.CookieOnly,
             p =>
             {
                 p.AddAuthenticationSchemes(IdentityConstants.ApplicationScheme);

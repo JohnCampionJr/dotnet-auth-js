@@ -12,7 +12,7 @@ Content-Type: application/json
 
 ### login and get token
 # @name auth
-POST /identity/login
+POST /identity/unauthlogin
 Content-Type: application/json
 {
   "username": "{{email}}",
@@ -24,20 +24,20 @@ Content-Type: application/json
 ### test cookie auth
 # @ref auth
 GET /auth/hello
-# Authorization: Bearer {{ auth.accessToken }}
+# Authorization: Bearer {{ auth.access_token }}
 
 ### test token auth
 # @no-cookie-jar
 # @ref auth
 GET /auth/hello
-Authorization: Bearer {{ auth.accessToken }}
+Authorization: Bearer {{ auth.access_token }}
 
 
 ### test token only endpoint with token
 # @no-cookie-jar
 # @ref auth
 GET /tokenonly
-Authorization: Bearer {{ auth.accessToken }}
+Authorization: Bearer {{ auth.access_token }}
 
 ### test token only endpoint with cookie
 # @ref auth
@@ -51,18 +51,28 @@ GET /cookieonly
 # @no-cookie-jar
 # @ref auth
 GET /cookieonly
-Authorization: Bearer {{ auth.accessToken }}
+Authorization: Bearer {{ auth.access_token }}
 
-###
-# @name gen
+
+
+
+### test token only endpoint with token
+# @no-cookie-jar
 # @ref auth
-GET /auth/testtoken
-Authorization: Bearer {{auth.accessToken}}
+GET /auth/tokenonly
+Authorization: Bearer {{ auth.access_token }}
 
-@gen={{response.parsedBody}}
+### test token only endpoint with cookie
+# @ref auth
+GET /auth/tokenonly
 
-### 
-# @ref gen
-GET /auth/hello
-Authorization: Bearer {{gen.accessToken}}
+### test token only endpoint with cookie
+# @ref auth
+GET /auth/cookieonly
+
+### test token only endpoint with token
+# @no-cookie-jar
+# @ref auth
+GET /auth/cookieonly
+Authorization: Bearer {{ auth.access_token }}
 

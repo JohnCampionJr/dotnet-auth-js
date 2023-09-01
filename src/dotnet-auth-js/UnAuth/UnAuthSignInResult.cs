@@ -10,11 +10,11 @@ public class UnAuthSignInResult : SignInResult
         var dictionary = new Dictionary<string, object?>();
         if (TwoFactorUserIdToken is not null)
         {
-            dictionary.Add(UnAuthConstants.TwoFactorUserIdToken, TwoFactorUserIdToken);
+            dictionary.Add(IdentityConstants.TwoFactorUserIdScheme, TwoFactorUserIdToken);
         }
         if (TwoFactorRememberMeToken is not null)
         {
-            dictionary.Add(UnAuthConstants.TwoFactorRememberMeToken, TwoFactorRememberMeToken);
+            dictionary.Add(IdentityConstants.TwoFactorRememberMeScheme, TwoFactorRememberMeToken);
         }
 
         return dictionary.Count == 0 ? null : dictionary;

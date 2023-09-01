@@ -121,7 +121,7 @@ public partial class UnAuthMapIdentityApiTests
         AssertProblemWithJson(twoFactorStep1, twoFactorContent, "RequiresTwoFactor");
         ApplyCookiesMaybe(client, twoFactorStep1);
 
-        var twoFactorUserIdToken = twoFactorContent.GetProperty("TwoFactorUserIdToken").GetString();
+        var twoFactorUserIdToken = twoFactorContent.GetProperty(IdentityConstants.TwoFactorUserIdScheme).GetString();
         client.DefaultRequestHeaders.Authorization = new("TwoFactorUserIdToken", twoFactorUserIdToken);
 
         AssertOk(await client.PostAsJsonAsync("/identity/unauthlogin", new { twoFactorCode }));
@@ -164,7 +164,7 @@ public partial class UnAuthMapIdentityApiTests
         AssertProblemWithJson(twoFactorStep1, twoFactorContent, "RequiresTwoFactor");
         ApplyCookiesMaybe(client, twoFactorStep1);
 
-        var twoFactorUserIdToken = twoFactorContent.GetProperty("TwoFactorUserIdToken").GetString();
+        var twoFactorUserIdToken = twoFactorContent.GetProperty(IdentityConstants.TwoFactorUserIdScheme).GetString();
         client.DefaultRequestHeaders.Authorization = new("TwoFactorUserIdToken", twoFactorUserIdToken);
         
         var recoveryLoginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { TwoFactorRecoveryCode = recoveryCodes[0] });

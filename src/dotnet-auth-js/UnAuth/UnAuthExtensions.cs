@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Http.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
@@ -10,6 +9,16 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class UnAuthExtensions
 {
+    public static IServiceCollection AddUnAuthorization(this IServiceCollection services)
+        => services.AddAuthorization(a => a.AddUnAuthPolicies());
+    
+    public static IServiceCollection AddUnAuthorization(this IServiceCollection services, Action<AuthorizationOptions> configureOptions) =>
+        services.AddAuthorization(a =>
+        {
+            a.AddUnAuthPolicies();
+            configureOptions(a);
+        });
+    
     public static AuthenticationBuilder AddUnAuthentication(this IServiceCollection services)
         => services.AddAuthentication(UnAuthConstants.IdentityScheme).AddUnAuthSchemes();
     
@@ -133,7 +142,7 @@ public static class UnAuthCookieExtensions
     /// <returns>The <see cref="OptionsBuilder{TOptions}"/> which can be used to configure the cookie authentication.</returns>
     public static OptionsBuilder<CookieAuthenticationOptions> AddUnAuthTwoFactorRememberMeCookie(this AuthenticationBuilder builder)
     {
-        builder.AddCookie(UnAuthConstants.TwoFactorRememberMeScheme, o =>
+        builder.AddCookie(UnAuthConstants.TwoFactorRememberMeCookieScheme, o =>
         {
             o.Cookie.Name = IdentityConstants.TwoFactorRememberMeScheme; 
             o.Events = new CookieAuthenticationEvents
@@ -151,7 +160,7 @@ public static class UnAuthCookieExtensions
     /// <returns>The <see cref="OptionsBuilder{TOptions}"/> which can be used to configure the cookie authentication.</returns>
     public static OptionsBuilder<CookieAuthenticationOptions> AddUnAuthTwoFactorUserIdCookie(this AuthenticationBuilder builder)
     {
-        builder.AddCookie(UnAuthConstants.TwoFactorUserIdScheme, o =>
+        builder.AddCookie(UnAuthConstants.TwoFactorUserIdCookieScheme, o =>
         {
             o.Cookie.Name = IdentityConstants.TwoFactorUserIdScheme;
             o.Events = new CookieAuthenticationEvents

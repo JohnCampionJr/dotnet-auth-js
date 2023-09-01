@@ -25,7 +25,7 @@ public sealed class UnAuthHandler(
         // the options cannot be overridden by request
         if (Options.AllowedSchemes == UnAuthSchemes.Bearer) return false;
         
-        if (Context.Items.TryGetValue(UnAuthConstants.CookieMode, out var obj) && obj is bool mode)
+        if (Context.Items.TryGetValue(UnAuthContextItems.CookieMode, out var obj) && obj is bool mode)
         {
             return mode;
         }
@@ -60,8 +60,8 @@ public sealed class UnAuthHandler(
 
         if (Scheme.Name == IdentityConstants.TwoFactorUserIdScheme)
         {
-            if (cookieMode is not false && await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorUserIdScheme) is not null) {                
-                var cookieResult = await Context.AuthenticateAsync(UnAuthConstants.TwoFactorUserIdScheme);
+            if (cookieMode is not false && await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorUserIdCookieScheme) is not null) {                
+                var cookieResult = await Context.AuthenticateAsync(UnAuthConstants.TwoFactorUserIdCookieScheme);
 
                 if (cookieMode is true) return cookieResult;
 
@@ -102,9 +102,9 @@ public sealed class UnAuthHandler(
 
         if (Scheme.Name == IdentityConstants.TwoFactorRememberMeScheme)
         {
-            if (cookieMode is not false && await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorRememberMeScheme) is not null)
+            if (cookieMode is not false && await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorRememberMeCookieScheme) is not null)
             {
-                var cookieResult = await Context.AuthenticateAsync(UnAuthConstants.TwoFactorRememberMeScheme);
+                var cookieResult = await Context.AuthenticateAsync(UnAuthConstants.TwoFactorRememberMeCookieScheme);
 
                 if (cookieMode is true) return cookieResult;
 
@@ -175,7 +175,7 @@ public sealed class UnAuthHandler(
             if (cookieMode is not true && BearerMode())
             {
                 var response = tokenService.GenerateIdentity(user, IdentityConstants.BearerScheme, properties);
-                Context.Items.TryAdd(UnAuthConstants.BearerToken, response);
+                Context.Items.TryAdd(UnAuthContextItems.Bearer, response);
                 // don't want handler to write to context
                 // await Context.SignInAsync(IdentityConstants.BearerScheme, user, properties);
             }
@@ -185,11 +185,11 @@ public sealed class UnAuthHandler(
         if (Scheme.Name == IdentityConstants.TwoFactorUserIdScheme)
         {
             var response = tokenService.GenerateTwoFactorUserId(user, properties);
-            Context.Items.TryAdd(UnAuthConstants.TwoFactorUserIdToken, response.AccessToken);
+            Context.Items.TryAdd(UnAuthContextItems.TwoFactorUserId, response.AccessToken);
 
-            if (await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorUserIdScheme) is not null)
+            if (await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorUserIdCookieScheme) is not null)
             {
-                await Context.SignInAsync(UnAuthConstants.TwoFactorUserIdScheme, user, properties);
+                await Context.SignInAsync(UnAuthConstants.TwoFactorUserIdCookieScheme, user, properties);
             }
             else if (cookieMode is true && BearerMode())
             {
@@ -202,11 +202,11 @@ public sealed class UnAuthHandler(
         if (Scheme.Name == IdentityConstants.TwoFactorRememberMeScheme)
         {
             var response = tokenService.GenerateTwoFactorRemember(user, properties);
-            Context.Items.TryAdd(UnAuthConstants.TwoFactorRememberMeToken, response.AccessToken);
+            Context.Items.TryAdd(UnAuthContextItems.TwoFactorRememberMe, response.AccessToken);
 
-            if (await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorRememberMeScheme) is not null)
+            if (await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorRememberMeCookieScheme) is not null)
             {
-                await Context.SignInAsync(UnAuthConstants.TwoFactorRememberMeScheme, user, properties);
+                await Context.SignInAsync(UnAuthConstants.TwoFactorRememberMeCookieScheme, user, properties);
             }
             else if (cookieMode is true && BearerMode())
             {
@@ -236,9 +236,9 @@ public sealed class UnAuthHandler(
 
         if (Scheme.Name == IdentityConstants.TwoFactorUserIdScheme)
         {
-            if (cookieMode is not false && await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorRememberMeScheme) is not null)
+            if (cookieMode is not false && await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorRememberMeCookieScheme) is not null)
             {
-                await Context.SignOutAsync(UnAuthConstants.TwoFactorRememberMeScheme);
+                await Context.SignOutAsync(UnAuthConstants.TwoFactorRememberMeCookieScheme);
             }
 
             return;
@@ -246,9 +246,9 @@ public sealed class UnAuthHandler(
 
         if (Scheme.Name == IdentityConstants.TwoFactorRememberMeScheme)
         {
-            if (cookieMode is not false && await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorRememberMeScheme) is not null)
+            if (cookieMode is not false && await schemeProvider.GetSchemeAsync(UnAuthConstants.TwoFactorRememberMeCookieScheme) is not null)
             {
-                await Context.SignOutAsync(UnAuthConstants.TwoFactorRememberMeScheme);
+                await Context.SignOutAsync(UnAuthConstants.TwoFactorRememberMeCookieScheme);
             }
 
             return;

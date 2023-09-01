@@ -20,50 +20,14 @@ builder.Services.AddSwaggerGen(c =>
 var dbConnection = new SqliteConnection("DataSource=:memory:");
 builder.Services.AddSingleton(_ => dbConnection);
 
-// builder.Services.AddAuthorization(a =>
-// {
-//     a.AddCombinedPolicies();
-// });
-
-builder.Services
-    .AddAuthentication(UnAuthConstants.IdentityScheme)
-    // .AddAuthentication(a =>
-    // {
-    //     a.DefaultScheme = UnAuthConstants.IdentityScheme;
-    // })
-    .AddBearerToken(IdentityConstants.BearerScheme)
-    .AddCookie(IdentityConstants.ApplicationScheme)
-    .AddScheme<UnAuthOptions, UnAuthHandler>(UnAuthConstants.IdentityScheme, _ => { })
-    .AddScheme<UnAuthOptions, UnAuthHandler>(IdentityConstants.TwoFactorUserIdScheme, _ => { });
-    // .AddIdentityCookies(
-    //     (c) =>
-    //     {
-    //         // this makes the site return 401s rather than 302 for cookie only paths
-    //         c.ApplicationCookie?.Configure(
-    //             o => o.ForwardChallenge = IdentityConstants.BearerScheme
-    //         );
-    //     }
-    ;
-
-builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<UnAuthOptions>, UnAuthConfigureOptions>());
-builder.Services.AddScoped<UnAuthTokenService>();
-
-
-
-
-// builder.Services.AddCombinedAuthorization();
-// builder.Services.AddCombinedAuthentication();
+builder.Services.AddUnAuthorization();
 
 builder.Services
     .AddDbContext<ApplicationDbContext>(
         (sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>())
     )
-    .AddIdentityCore<ApplicationUser>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddApiEndpoints()
-    .AddDefaultTokenProviders();
-
-builder.Services.AddTransient<UnAuthTokenService>();
+    .AddUnAuthentication<ApplicationUser>()
+    .AddEntityFrameworkStores<ApplicationDbContext>();
 
 var app = builder.Build();
 
@@ -80,26 +44,18 @@ app.UseAuthorization();
 app.MapGroup("/identity").MyMapIdentityApi<ApplicationUser>();
 
 app.MapGet("/cookieonly", (ClaimsPrincipal user) => $"With Cookie: Hello, {user.Identity?.Name}!")
-    .RequireAuthorization(MyPolicyConstants.ApplicationOnly);
+    .RequireAuthorization(UnAuthPolicies.CookieOnly);
 
 app.MapGet("/tokenonly", (ClaimsPrincipal user) => $"With Token: Hello, {user.Identity?.Name}!")
-    .RequireAuthorization(MyPolicyConstants.BearerOnly);
+    .RequireAuthorization(UnAuthPolicies.BearerOnly);
 
 var authGroup = app.MapGroup("/auth").RequireAuthorization();
 authGroup.MapGet("/hello", (ClaimsPrincipal user) => $"With Either: Hello, {user.Identity?.Name}!");
+authGroup.MapGet("/cookieonly", (ClaimsPrincipal user) => $"With Cookie: Hello, {user.Identity?.Name}!")
+    .RequireAuthorization(UnAuthPolicies.CookieOnly);
 
-authGroup.MapGet(
-    "/testtoken",
-    (
-        ClaimsPrincipal user,
-        UnAuthTokenService tokenGen,
-        TimeProvider timeProvider,
-        IOptionsMonitor<BearerTokenOptions> optionsMonitor
-    ) =>
-    {
-        return TypedResults.Ok(tokenGen.GenerateIdentity(user, IdentityConstants.BearerScheme));
-    }
-);
+authGroup.MapGet("/tokenonly", (ClaimsPrincipal user) => $"With Token: Hello, {user.Identity?.Name}!")
+    .RequireAuthorization(UnAuthPolicies.BearerOnly);
 
 app.UseHttpsRedirection();
 
