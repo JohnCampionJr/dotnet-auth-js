@@ -90,14 +90,42 @@ public static class UnAuthCookieExtensions
     public static IdentityCookiesBuilder AddUnAuthCookies(this AuthenticationBuilder builder, Action<IdentityCookiesBuilder> configureCookies)
     {
         var cookieBuilder = new IdentityCookiesBuilder();
-        cookieBuilder.ApplicationCookie = builder.AddApplicationCookie();
+        cookieBuilder.ApplicationCookie = builder.AddUnAuthApplicationCookie();
         cookieBuilder.ExternalCookie = builder.AddExternalCookie();
         cookieBuilder.TwoFactorRememberMeCookie = builder.AddUnAuthTwoFactorRememberMeCookie();
         cookieBuilder.TwoFactorUserIdCookie = builder.AddUnAuthTwoFactorUserIdCookie();
         configureCookies?.Invoke(cookieBuilder);
         return cookieBuilder;
     }
-    
+
+    /// <summary>
+    /// Adds the identity application cookie.
+    /// </summary>
+    /// <param name="builder">The current <see cref="AuthenticationBuilder"/> instance.</param>
+    /// <returns>The <see cref="OptionsBuilder{TOptions}"/> which can be used to configure the cookie authentication.</returns>
+    public static OptionsBuilder<CookieAuthenticationOptions> AddUnAuthApplicationCookie(this AuthenticationBuilder builder)
+    {
+        builder.AddCookie(IdentityConstants.ApplicationScheme, o =>
+        {
+            // o.LoginPath = new PathString("/Account/Login");
+            o.Events = new CookieAuthenticationEvents
+            {
+                OnValidatePrincipal = SecurityStampValidator.ValidatePrincipalAsync,
+                OnRedirectToLogin = context =>
+                {
+                    context.Response.StatusCode = 401;
+                    return Task.CompletedTask;
+                },
+                OnRedirectToAccessDenied = context =>
+                {
+                    context.Response.StatusCode = 403;
+                    return Task.CompletedTask;
+                }
+            };
+        });
+        return new OptionsBuilder<CookieAuthenticationOptions>(builder.Services, IdentityConstants.ApplicationScheme);
+    }
+
     /// <summary>
     /// Adds the identity cookie used for two factor remember me.
     /// </summary>
@@ -107,7 +135,7 @@ public static class UnAuthCookieExtensions
     {
         builder.AddCookie(UnAuthConstants.TwoFactorRememberMeScheme, o =>
         {
-            o.Cookie.Name = IdentityConstants.TwoFactorRememberMeScheme;
+            o.Cookie.Name = IdentityConstants.TwoFactorRememberMeScheme; 
             o.Events = new CookieAuthenticationEvents
             {
                 OnValidatePrincipal = SecurityStampValidator.ValidateAsync<ITwoFactorSecurityStampValidator>
@@ -136,4 +164,3 @@ public static class UnAuthCookieExtensions
     }
 
 }
-

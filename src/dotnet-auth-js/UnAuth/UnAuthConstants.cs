@@ -8,4 +8,7 @@ public static class UnAuthConstants
     public static readonly string TwoFactorUserIdToken = "TwoFactorUserIdToken";
     public static readonly string TwoFactorRememberMeToken = "TwoFactorRememberMeToken";
     public static readonly string CookieMode = "UnAuthCookieMode";
+    public static readonly string BearerOnlyPolicy = "UnAuth.BearerPolicy";
+    public static readonly string CookieOnlyPolicy = "UnAuth.CookiePolicy";
+    
 }

@@ -185,7 +185,47 @@ public partial class UnAuthMapIdentityApiTests
 
         AssertOk(await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password }));
     }
+    
+    [Fact]
+    public async Task CookiePolicyBlocksBearerAccess()
+    {
+        await using var app = await CreateAppAsync();
+        using var client = app.GetTestClient();
 
+        await RegisterAsync(client);
+        var loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password });
+
+        loginResponse.EnsureSuccessStatusCode();
+
+        var loginContent = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var tokenType = loginContent.GetProperty("token_type").GetString();
+        var accessToken = loginContent.GetProperty("access_token").GetString();
+        var expiresIn = loginContent.GetProperty("expires_in").GetDouble();
+
+        Assert.Equal("Bearer", tokenType);
+        Assert.Equal(3600, expiresIn);
+
+        client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
+        Assert.Equal($"Bearer: Hello, {Username}!", await client.GetStringAsync("/bearer"));
+        AssertUnauthorizedAndEmpty(await client.GetAsync($"/cookie"));
+    }
+
+    [Fact]
+    public async Task BearerPolicyBlocksCookieAccess()
+    {
+        await using var app = await CreateAppAsync();
+        using var client = app.GetTestClient();
+
+        await RegisterAsync(client);
+        var loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin?cookieMode=true", new { Username, Password });
+
+        loginResponse.EnsureSuccessStatusCode();
+
+        ApplyCookiesMaybe(client, loginResponse);
+
+        Assert.Equal($"Cookie: Hello, {Username}!", await client.GetStringAsync("/cookie"));
+        AssertUnauthorizedAndEmpty(await client.GetAsync($"/bearer"));
+    }
     
     private static void AssertProblemWithJson(HttpResponseMessage response, JsonElement content, string detail, HttpStatusCode status = HttpStatusCode.Unauthorized)
     {
