@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
-public sealed class UnAuthHandler(
+internal sealed class UnAuthHandler(
     UnAuthTokenService tokenService,
     IOptionsMonitor<UnAuthOptions> optionsMonitor,
     IAuthenticationSchemeProvider schemeProvider,

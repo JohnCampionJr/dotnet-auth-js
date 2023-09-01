@@ -1,18 +1,20 @@
 # dotnet-auth-js
 A project expanding on .NET 8.0's Minimal API Auth
 
-# Related Issues
-[#49957 BearerAndApplicationScheme](https://github.com/dotnet/aspnetcore/issues/49957)
+### Ideas
+- Separate Mappings to separate static methods for use in controllers if desired
+- Database helpers for quick setup
+ 
 
-# Ideas
-
-[Alternate scheme forwarder without needing a custom one](https://github.com/dotnet/aspnetcore/blob/main/src/Security/samples/PathSchemeSelection/Startup.cs)
-
-# Post .NET 8.0 Preview 7 changes
+### Post .NET 8.0 Preview 7 changes
 - AccessTokenResponse JSON Changes
 - DTOs will be public from dotnet (rc.2 it appears)
 
-# Credits
+### Related Issues
+[#49957 BearerAndApplicationScheme](https://github.com/dotnet/aspnetcore/issues/49957)
+
+
+### Credits
 
 [Original Minimal API Identity Endpoints](https://github.com/dotnet/aspnetcore/blob/main/src/Identity/Core/src/IdentityApiEndpointRouteBuilderExtensions.cs)
 [Original Identity and Minimal API Endpoints Tests](https://github.com/dotnet/aspnetcore/tree/main/src/Identity/test/Identity.FunctionalTests)

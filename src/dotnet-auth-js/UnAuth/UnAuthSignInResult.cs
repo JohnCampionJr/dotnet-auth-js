@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 
-public class UnAuthSignInResult : SignInResult
+public sealed class UnAuthSignInResult : SignInResult
 {
     public string? TwoFactorUserIdToken { get; set; }
     public string? TwoFactorRememberMeToken { get; set; }

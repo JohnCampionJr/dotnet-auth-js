@@ -1,5 +1,3 @@
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
@@ -10,7 +8,7 @@ using Microsoft.AspNetCore.Authentication.BearerToken;
 // Based off of the BearerTokenHandler
 // https://github.com/dotnet/aspnetcore/blob/main/src/Security/Authentication/BearerToken/src/BearerTokenHandler.cs
 
-public sealed class UnAuthTokenService(IOptionsMonitor<UnAuthOptions> unAuthOptionsMonitor, IOptionsMonitor<BearerTokenOptions> bearerOptionsMonitor, TimeProvider timeProvider)
+internal sealed class UnAuthTokenService(IOptionsMonitor<UnAuthOptions> unAuthOptionsMonitor, IOptionsMonitor<BearerTokenOptions> bearerOptionsMonitor, TimeProvider timeProvider)
 {
     public UnAuthTokenResponse GenerateIdentity(
         ClaimsPrincipal user,

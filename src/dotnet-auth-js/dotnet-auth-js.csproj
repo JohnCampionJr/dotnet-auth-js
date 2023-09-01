@@ -18,6 +18,8 @@
   <ItemGroup>
     <Compile Remove="jcamp.BearerToken\**" />
     <Compile Remove="DTO\IdentityEndpointsJsonSerializerContext.cs" />
+    <Compile Remove="MyIdentityConstants.cs" />
+    <Compile Remove="CompositeIdentityHandler.cs" />
   </ItemGroup>
 
   <ItemGroup>
