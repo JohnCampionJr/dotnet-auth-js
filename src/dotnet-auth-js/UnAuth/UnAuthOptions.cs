@@ -3,11 +3,17 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 
+public enum UnAuthSchemes
+{
+    Bearer,
+    Cookie,
+    Both
+}
+
 public sealed class UnAuthOptions : AuthenticationSchemeOptions
 {
     public string? ChallengeScheme { get; set; } = IdentityConstants.BearerScheme;
-    public string[] TwoFactorRememberMeSchemes { get; set; } = { IdentityConstants.BearerScheme, IdentityConstants.ApplicationScheme };
-    public string[] TwoFactorUserIdSchemes { get; set; } = { IdentityConstants.BearerScheme, IdentityConstants.ApplicationScheme };
+    public UnAuthSchemes AllowedSchemes { get; set; } = UnAuthSchemes.Both;
     
     /// <summary>
     /// Controls how much time the two factor user id token will remain valid from the point it is created.

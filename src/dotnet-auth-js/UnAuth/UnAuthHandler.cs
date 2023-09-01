@@ -22,6 +22,9 @@ public sealed class UnAuthHandler(
 
     private bool? CookieMode()
     {
+        // the options cannot be overridden by request
+        if (Options.AllowedSchemes == UnAuthSchemes.Bearer) return false;
+        
         if (Context.Items.TryGetValue(UnAuthConstants.CookieMode, out var obj) && obj is bool mode)
         {
             return mode;
@@ -30,6 +33,8 @@ public sealed class UnAuthHandler(
         return null;
     }
 
+    private bool BearerMode() => Options.AllowedSchemes != UnAuthSchemes.Cookie;
+
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var cookieMode = CookieMode();
@@ -37,7 +42,7 @@ public sealed class UnAuthHandler(
         if (Scheme.Name == UnAuthConstants.IdentityScheme)
         {
 
-            if (cookieMode is not true)
+            if (cookieMode is not true && BearerMode())
             {
                 var bearerResult = await Context.AuthenticateAsync(IdentityConstants.BearerScheme);
                 if (bearerResult != AuthenticateResult.NoResult())
@@ -71,25 +76,28 @@ public sealed class UnAuthHandler(
                 throw new InvalidOperationException("The UnAuth.TwoFactorUserCookieScheme has not been registered");
             }
 
-            var token = GetTokenOrNull("TwoFactorUserIdToken");
-            if (token is null)
+            if (BearerMode())
             {
-                return AuthenticateResult.NoResult();
+                var token = GetTokenOrNull("TwoFactorUserIdToken");
+                if (token is null)
+                {
+                    return AuthenticateResult.NoResult();
+                }
+
+                var ticket = Options.TwoFactorUserIdTokenProtector.Unprotect(token);
+
+                if (ticket?.Properties?.ExpiresUtc is not { } expiresUtc)
+                {
+                    return FailedUnprotectingToken;
+                }
+
+                if (TimeProvider.GetUtcNow() >= expiresUtc)
+                {
+                    return TokenExpired;
+                }
+
+                return AuthenticateResult.Success(ticket);
             }
-
-            var ticket = Options.TwoFactorUserIdTokenProtector.Unprotect(token);
-
-            if (ticket?.Properties?.ExpiresUtc is not { } expiresUtc)
-            {
-                return FailedUnprotectingToken;
-            }
-
-            if (TimeProvider.GetUtcNow() >= expiresUtc)
-            {
-                return TokenExpired;
-            }
-
-            return AuthenticateResult.Success(ticket);
         }
 
         if (Scheme.Name == IdentityConstants.TwoFactorRememberMeScheme)
@@ -111,25 +119,29 @@ public sealed class UnAuthHandler(
                 throw new InvalidOperationException("The UnAuth.TwoFactorRememberCookie Scheme has not been registered");
             }
 
-            var token = GetTokenOrNull("TwoFactorRemember");
-            if (token is null)
+            if (BearerMode())
             {
-                return AuthenticateResult.NoResult();
+
+                var token = GetTokenOrNull("TwoFactorRemember");
+                if (token is null)
+                {
+                    return AuthenticateResult.NoResult();
+                }
+
+                var ticket = Options.TwoFactorUserIdTokenProtector.Unprotect(token);
+
+                if (ticket?.Properties?.ExpiresUtc is not { } expiresUtc)
+                {
+                    return FailedUnprotectingToken;
+                }
+
+                if (TimeProvider.GetUtcNow() >= expiresUtc)
+                {
+                    return TokenExpired;
+                }
+
+                return AuthenticateResult.Success(ticket);
             }
-
-            var ticket = Options.TwoFactorUserIdTokenProtector.Unprotect(token);
-
-            if (ticket?.Properties?.ExpiresUtc is not { } expiresUtc)
-            {
-                return FailedUnprotectingToken;
-            }
-
-            if (TimeProvider.GetUtcNow() >= expiresUtc)
-            {
-                return TokenExpired;
-            }
-
-            return AuthenticateResult.Success(ticket);
         }
 
         throw new ArgumentException($"{Scheme.Name} is an unsupported Scheme type for UnAuth");
@@ -160,7 +172,7 @@ public sealed class UnAuthHandler(
                 if (properties is not null) properties.ExpiresUtc = null;
             }
 
-            if (cookieMode is not true)
+            if (cookieMode is not true && BearerMode())
             {
                 var response = tokenService.GenerateIdentity(user, IdentityConstants.BearerScheme, properties);
                 Context.Items.TryAdd(UnAuthConstants.BearerToken, response);
@@ -179,7 +191,7 @@ public sealed class UnAuthHandler(
             {
                 await Context.SignInAsync(UnAuthConstants.TwoFactorUserIdScheme, user, properties);
             }
-            else if (cookieMode is true)
+            else if (cookieMode is true && BearerMode())
             {
                 // if cookie mode is specifically requested and provider not registered, throw exception similar to core code
                 throw new InvalidOperationException("The UnAuth.TwoFactorUserCookieScheme has not been registered");
@@ -196,7 +208,7 @@ public sealed class UnAuthHandler(
             {
                 await Context.SignInAsync(UnAuthConstants.TwoFactorRememberMeScheme, user, properties);
             }
-            else if (cookieMode is true)
+            else if (cookieMode is true && BearerMode())
             {
                 // if cookie mode is specifically requested and provider not registered, throw exception similar to core code
                 throw new InvalidOperationException("The UnAuth.TwoFactorRememberCookie Scheme has not been registered");

@@ -178,26 +178,6 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             return TypedResults.Problem(result.ToString(), statusCode: StatusCodes.Status401Unauthorized, extensions: result.ToDictionary());
         });
         
-        routeGroup.MapPost("/unauth2falogin", async Task<Results<Ok<AccessTokenResponse>, EmptyHttpResult, ProblemHttpResult>>
-            (HttpContext ctx, [FromBody] TwoFactorLoginRequest login, [FromQuery] bool? cookieMode, [FromQuery] bool? persistCookies, [FromServices] IServiceProvider sp) =>
-        {
-            var signInManager = sp.GetRequiredService<SignInManager<TUser>>();
-
-            signInManager.PrimaryAuthenticationScheme = UnAuthConstants.IdentityScheme; 
-            // signInManager.PrimaryAuthenticationScheme = cookieMode == true ? IdentityConstants.ApplicationScheme : IdentityConstants.BearerScheme;
-            var isPersistent = persistCookies ?? true;
-
-            var result = await signInManager.TwoFactorAuthenticatorSignInAsync(login.TwoFactorCode, false, false);
-            
-            if (result.Succeeded)
-            {
-                // The signInManager already produced the needed response in the form of a cookie or bearer token.
-                return TypedResults.Empty;
-            }
-            
-            return TypedResults.Problem(result.ToString(), statusCode: StatusCodes.Status401Unauthorized);
-        });
-
         routeGroup.MapPost("/refresh", async Task<Results<Ok<AccessTokenResponse>, UnauthorizedHttpResult, SignInHttpResult, ChallengeHttpResult>>
             ([FromBody] RefreshRequest refreshRequest, [FromServices] IServiceProvider sp) =>
         {

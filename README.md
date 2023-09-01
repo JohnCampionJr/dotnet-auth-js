@@ -8,8 +8,9 @@ A project expanding on .NET 8.0's Minimal API Auth
 
 [Alternate scheme forwarder without needing a custom one](https://github.com/dotnet/aspnetcore/blob/main/src/Security/samples/PathSchemeSelection/Startup.cs)
 
-# Post Preview 7 changes
+# Post .NET 8.0 Preview 7 changes
 - AccessTokenResponse JSON Changes
+- DTOs will be public from dotnet (rc.2 it appears)
 
 # Credits
 

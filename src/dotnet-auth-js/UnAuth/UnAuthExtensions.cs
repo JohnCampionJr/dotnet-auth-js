@@ -130,7 +130,7 @@ public static class UnAuthCookieExtensions
             {
                 OnRedirectToReturnUrl = _ => Task.CompletedTask
             };
-            o.ExpireTimeSpan = TimeSpan.FromMinutes(5);
+            o.ExpireTimeSpan = TimeSpan.FromMinutes(10);
         });
         return new OptionsBuilder<CookieAuthenticationOptions>(builder.Services, IdentityConstants.TwoFactorUserIdScheme);
     }
