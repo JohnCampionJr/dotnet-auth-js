@@ -27,6 +27,8 @@ namespace Microsoft.AspNetCore.Routing;
 /// </summary>
 public static partial class IdentityApiEndpointRouteBuilderExtensions
 {
+    private static readonly NoopResult _noopHttpResult = new();
+
     /// <summary>
     /// Add endpoints for registering, logging in, and logging out using ASP.NET Core Identity.
     /// </summary>
@@ -63,11 +65,10 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
                 throw new NotSupportedException($"{nameof(MyMapIdentityApi)} requires a user store with email support.");
             }
 
-            var userStore = sp.GetRequiredService<IUserStore<TUser>>();
-            var emailStore = (IUserEmailStore<TUser>)userStore;
+            var emailStore = (IUserEmailStore<TUser>)sp.GetRequiredService<IUserStore<TUser>>();
 
             var user = new TUser();
-            await userStore.SetUserNameAsync(user, registration.Username, CancellationToken.None);
+            await userManager.SetUserNameAsync(user, registration.Username);
             await emailStore.SetEmailAsync(user, registration.Email, CancellationToken.None);
             var result = await userManager.CreateAsync(user, registration.Password);
 
@@ -80,7 +81,7 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             return CreateValidationProblem(result);
         });
 
-        routeGroup.MapPost("/login", async Task<Results<Ok<AccessTokenResponse>, EmptyHttpResult, ProblemHttpResult>>
+        routeGroup.MapPost("/login", async Task<Results<Ok<AccessTokenResponse>, EmptyHttpResult, ProblemHttpResult, IResult>>
             ([FromBody] LoginRequest login, [FromQuery] bool? cookieMode, [FromQuery] bool? persistCookies, [FromServices] IServiceProvider sp) =>
         {
             var signInManager = sp.GetRequiredService<SignInManager<TUser>>();
@@ -105,7 +106,7 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             if (result.Succeeded)
             {
                 // The signInManager already produced the needed response in the form of a cookie or bearer token.
-                return TypedResults.Empty;
+                return _noopHttpResult;
             }
 
             return TypedResults.Problem(result.ToString(), statusCode: StatusCodes.Status401Unauthorized);
@@ -352,7 +353,7 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
                 else if (!await userManager.VerifyTwoFactorTokenAsync(user, userManager.Options.Tokens.AuthenticatorTokenProvider, tfaRequest.TwoFactorCode))
                 {
                     return CreateValidationProblem("InvalidTwoFactorCode",
-                        "The 2fa token provided by the request was invalid. A valid 2fa token is required to enable 2fa.");
+                        "The 2fa token provide by the request was invalid. A valid 2fa token is required to enable 2fa.");
                 }
 
                 await userManager.SetTwoFactorEnabledAsync(user, true);
@@ -404,7 +405,7 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
                 return TypedResults.NotFound();
             }
 
-            List<IdentityResult>? failedResults = null;
+            var failedIdentityResults = new List<IdentityResult>();
 
             if (!string.IsNullOrEmpty(infoRequest.NewUsername))
             {
@@ -412,7 +413,12 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
 
                 if (userName != infoRequest.NewUsername)
                 {
-                    AddIfFailed(ref failedResults, await userManager.SetUserNameAsync(user, infoRequest.NewUsername));
+                    var setUserNameResult = await userManager.SetUserNameAsync(user, infoRequest.NewUsername);
+
+                    if (!setUserNameResult.Succeeded)
+                    {
+                        failedIdentityResults.Add(setUserNameResult);
+                    }
                 }
             }
 
@@ -430,7 +436,7 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             {
                 if (string.IsNullOrEmpty(infoRequest.OldPassword))
                 {
-                    AddIfFailed(ref failedResults, IdentityResult.Failed(new IdentityError
+                    failedIdentityResults.Add(IdentityResult.Failed(new IdentityError
                     {
                         Code = "OldPasswordRequired",
                         Description = "The old password is required to set a new password. If the old password is forgotten, use /resetPassword.",
@@ -438,7 +444,12 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
                 }
                 else
                 {
-                    AddIfFailed(ref failedResults, await userManager.ChangePasswordAsync(user, infoRequest.OldPassword, infoRequest.NewPassword));
+                    var changePasswordResult = await userManager.ChangePasswordAsync(user, infoRequest.OldPassword, infoRequest.NewPassword);
+
+                    if (!changePasswordResult.Succeeded)
+                    {
+                        failedIdentityResults.Add(changePasswordResult);
+                    }
                 }
             }
 
@@ -450,9 +461,9 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
                 await signInManager.RefreshSignInAsync(user);
             }
 
-            if (failedResults is not null)
+            if (failedIdentityResults.Count > 0)
             {
-                return CreateValidationProblem(failedResults);
+                return CreateValidationProblem(failedIdentityResults.ToArray());
             }
             else
             {
@@ -495,63 +506,38 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
         return new IdentityEndpointsConventionBuilder(routeGroup);
     }
 
-    private static void AddIfFailed(ref List<IdentityResult>? results, IdentityResult result)
-    {
-        if (result.Succeeded)
-        {
-            return;
-        }
-
-        results ??= new();
-        results.Add(result);
-    }
-
     private static ValidationProblem CreateValidationProblem(string errorCode, string errorDescription) =>
         TypedResults.ValidationProblem(new Dictionary<string, string[]> {
             { errorCode, new[] { errorDescription } }
         });
 
-    private static ValidationProblem CreateValidationProblem(IdentityResult result)
+    private static ValidationProblem CreateValidationProblem(params IdentityResult[] results)
     {
-        var errorDictionary = new Dictionary<string, string[]>(1);
-        AddErrorsToDictionary(errorDictionary, result);
-        return TypedResults.ValidationProblem(errorDictionary);
-    }
-
-    private static ValidationProblem CreateValidationProblem(List<IdentityResult> results)
-    {
-        var errorDictionary = new Dictionary<string, string[]>(results.Count);
+        var errorDictionary = new Dictionary<string, string[]>(results.Length);
 
         foreach (var result in results)
         {
-            AddErrorsToDictionary(errorDictionary, result);
+            Debug.Assert(!result.Succeeded);
+            foreach (var error in result.Errors)
+            {
+                string[] newDescriptions;
+
+                if (errorDictionary.TryGetValue(error.Code, out var descriptions))
+                {
+                    newDescriptions = new string[descriptions.Length + 1];
+                    Array.Copy(descriptions, newDescriptions, descriptions.Length);
+                    newDescriptions[descriptions.Length] = error.Description;
+                }
+                else
+                {
+                    newDescriptions = new[] { error.Description };
+                }
+
+                errorDictionary[error.Code] = newDescriptions;
+            }
         }
 
         return TypedResults.ValidationProblem(errorDictionary);
-    }
-
-    private static void AddErrorsToDictionary(Dictionary<string, string[]> errorDictionary, IdentityResult result)
-    {
-        // We expect a single error code and description in the normal case.
-        // This could be golfed with GroupBy and ToDictionary, but perf! :P
-        Debug.Assert(!result.Succeeded);
-        foreach (var error in result.Errors)
-        {
-            string[] newDescriptions;
-
-            if (errorDictionary.TryGetValue(error.Code, out var descriptions))
-            {
-                newDescriptions = new string[descriptions.Length + 1];
-                Array.Copy(descriptions, newDescriptions, descriptions.Length);
-                newDescriptions[descriptions.Length] = error.Description;
-            }
-            else
-            {
-                newDescriptions = new[] { error.Description };
-            }
-
-            errorDictionary[error.Code] = newDescriptions;
-        }
     }
 
     private static async Task<TwoFactorResponse> CreateTwoFactorResponseAsync<TUser>(TUser user, SignInManager<TUser> signInManager, string[]? recoveryCodes = null)
@@ -564,16 +550,11 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
         {
             await userManager.ResetAuthenticatorKeyAsync(user);
             key = await userManager.GetAuthenticatorKeyAsync(user);
-
-            if (string.IsNullOrEmpty(key))
-            {
-                throw new NotSupportedException("The user manager must produce an authenticator key after reset.");
-            }
         }
 
         return new()
         {
-            SharedKey = key,
+            SharedKey = key!,
             RecoveryCodes = recoveryCodes,
             RecoveryCodesLeft = recoveryCodes?.Length ?? await userManager.CountRecoveryCodesAsync(user),
             IsTwoFactorEnabled = await userManager.GetTwoFactorEnabledAsync(user),
@@ -584,11 +565,19 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
     private static async Task<InfoResponse> CreateInfoResponseAsync<TUser>(TUser user, ClaimsPrincipal claimsPrincipal, UserManager<TUser> userManager)
         where TUser : class
     {
+        var claimsArray = claimsPrincipal.Claims.ToArray();
+        var claimsDictionary = new Dictionary<string, string>(claimsArray.Length);
+
+        foreach (var claim in claimsArray)
+        {
+            claimsDictionary.Add(claim.Type, claim.Value);
+        }
+
         return new()
         {
             Username = await userManager.GetUserNameAsync(user) ?? throw new NotSupportedException("Users must have a user name."),
             Email = await userManager.GetEmailAsync(user) ?? throw new NotSupportedException("Users must have an email."),
-            Claims = claimsPrincipal.Claims.ToDictionary(c => c.Type, c => c.Value),
+            Claims = claimsDictionary,
         };
     }
 
@@ -599,6 +588,11 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
 
         public void Add(Action<EndpointBuilder> convention) => InnerAsConventionBuilder.Add(convention);
         public void Finally(Action<EndpointBuilder> finallyConvention) => InnerAsConventionBuilder.Finally(finallyConvention);
+    }
+
+    private sealed class NoopResult : IResult
+    {
+        public Task ExecuteAsync(HttpContext httpContext) => Task.CompletedTask;
     }
 
     [AttributeUsage(AttributeTargets.Parameter)]

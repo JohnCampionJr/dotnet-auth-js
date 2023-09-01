@@ -3,7 +3,6 @@
 
 #nullable enable
 
-using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -12,12 +11,11 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Identity.DefaultUI.WebSite;
 using Identity.DefaultUI.WebSite.Data;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.Testing;
@@ -25,9 +23,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Xunit.Sdk;
 
@@ -86,10 +82,10 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         using var client = app.GetTestClient();
 
         await RegisterAsync(client);
-        var loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password });
+        var loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin?cookieMode=false", new { Username, Password });
 
         loginResponse.EnsureSuccessStatusCode();
-        // Assert.False(loginResponse.Headers.Contains(HeaderNames.SetCookie));
+        Assert.False(loginResponse.Headers.Contains(HeaderNames.SetCookie));
 
         var loginContent = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
         var tokenType = loginContent.GetProperty("token_type").GetString();
@@ -156,7 +152,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         await RegisterAsync(client);
         var loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin?cookieMode=true", new { Username, Password });
 
-//         AssertOkAndEmpty(loginResponse);
+        AssertOkAndEmpty(loginResponse);
         Assert.True(loginResponse.Headers.TryGetValues(HeaderNames.SetCookie, out var setCookieHeaders));
         var setCookieHeader = Assert.Single(setCookieHeaders);
 
@@ -211,7 +207,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
 
         // The normal header still works
         client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
-        Assert.Equal($"Hello, {Username}!", await client.GetStringAsync("/auth/hello"));
+        Assert.Equal($"Hello, {Username}!", await client.GetStringAsync($"/auth/hello"));
     }
 
     [Theory]
@@ -221,13 +217,13 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         await using var app = await CreateAppAsync(AddIdentityActions[addIdentityMode]);
         using var client = app.GetTestClient();
 
-        AssertUnauthorizedAndEmpty(await client.GetAsync("/auth/hello"));
+        AssertUnauthorizedAndEmpty(await client.GetAsync($"/auth/hello"));
 
         client.DefaultRequestHeaders.Authorization = new("Bearer");
-        AssertUnauthorizedAndEmpty(await client.GetAsync("/auth/hello"));
+        AssertUnauthorizedAndEmpty(await client.GetAsync($"/auth/hello"));
 
         client.DefaultRequestHeaders.Authorization = new("Bearer", "");
-        AssertUnauthorizedAndEmpty(await client.GetAsync("/auth/hello"));
+        AssertUnauthorizedAndEmpty(await client.GetAsync($"/auth/hello"));
     }
 
     [Theory]
@@ -545,7 +541,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
 
         // Even with OnModelCreating tricks to prefix table names, using the same database
         // for multiple user tables is difficult because index conflics, so we just use a different db.
-        var dbConnection2 = new SqliteConnection("DataSource=:memory:");
+        var dbConnection2 = new SqliteConnection($"DataSource=:memory:");
 
         await using var app = await CreateAppAsync<ApplicationUser, ApplicationDbContext>(services =>
         {
@@ -602,7 +598,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
 
         client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
 
-        // We cannot enable 2fa without verifying we can produce a valid token.
+        // We cannot enable 2fa without verifying we can produce a valid
         await AssertValidationProblemAsync(await client.PostAsJsonAsync("/identity/account/2fa", new { Enable = true }),
             "RequiresTwoFactor");
         await AssertValidationProblemAsync(await client.PostAsJsonAsync("/identity/account/2fa", new { Enable = true, TwoFactorCode = "wrong" }),
@@ -617,7 +613,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         var enable2faResponse = await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true });
         var enable2faContent = await enable2faResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -628,24 +624,14 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         Assert.Equal($"Hello, {Username}!", await client.GetStringAsync("/auth/hello"));
 
         // But the refresh token is invalidated by the security stamp.
-        //
-        // AssertUnauthorizedAndEmpty(await client.PostAsJsonAsync("/identity/refresh", new { refreshToken }));
+        AssertUnauthorizedAndEmpty(await client.PostAsJsonAsync("/identity/refresh", new { refreshToken }));
 
         client.DefaultRequestHeaders.Clear();
-        
-        loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password });
 
-       //  await AssertProblemAsync(await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password }),
-          //  "RequiresTwoFactor");
-          
-           loginContent = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
-           accessToken = loginContent.GetProperty("TwoFactorUserIdToken").GetString();
-           client.DefaultRequestHeaders.Authorization = new("TwoFactorUserId", accessToken);
+        await AssertProblemAsync(await client.PostAsJsonAsync("/identity/login", new { Username, Password }),
+            "RequiresTwoFactor");
 
-        var codeLogin = await client.PostAsJsonAsync("/identity/unauth2falogin", new { twoFactorCode });
-        // var codeLogin = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password, twoFactorCode });
-
-        AssertOk(codeLogin);
+        AssertOk(await client.PostAsJsonAsync("/identity/login", new { Username, Password, twoFactorCode }));
     }
 
     [Fact]
@@ -667,7 +653,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         var enable2faResponse = await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true });
         var enable2faContent = await enable2faResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -717,7 +703,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         await AssertValidationProblemAsync(await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true, ResetSharedKey = true }),
             "CannotResetSharedKeyAndEnable");
@@ -733,7 +719,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         var resetSharedKey = resetKeyContent.GetProperty("sharedKey").GetString();
 
         var resetKeyBytes = Base32.FromBase32(sharedKey);
-        var resetTwoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var resetTwoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         // The old 2fa code no longer works
         await AssertValidationProblemAsync(await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true }),
@@ -763,7 +749,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         var enable2faResponse = await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true });
         var enable2faContent = await enable2faResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -830,12 +816,14 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         var enable2faResponse = await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true });
         var enable2faContent = await enable2faResponse.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(enable2faContent.GetProperty("isTwoFactorEnabled").GetBoolean());
         Assert.False(enable2faContent.GetProperty("isMachineRemembered").GetBoolean());
+
+        client.DefaultRequestHeaders.Clear();
 
         await AssertProblemAsync(await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password }),
             "RequiresTwoFactor");
@@ -856,7 +844,9 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         Assert.True(cookie2faResponse.GetProperty("isTwoFactorEnabled").GetBoolean());
         Assert.False(cookie2faResponse.GetProperty("isMachineRemembered").GetBoolean());
 
-        var persistentLoginResponse = await client.PostAsJsonAsync("/identity/unauthlogin?cookieMode=true", new { Username, Password, twoFactorCode });
+        client.DefaultRequestHeaders.Clear();
+
+        var persistentLoginResponse = await client.PostAsJsonAsync("/identity/unauthlogin?cookieMode=true&persistCookies=true", new { Username, Password, twoFactorCode });
         ApplyCookies(client, persistentLoginResponse);
 
         var persistent2faResponse = await client.GetFromJsonAsync<JsonElement>("/identity/account/2fa");
@@ -1032,7 +1022,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         Assert.Equal(Username, claimsAfterEmailChange.GetProperty(ClaimTypes.Email).GetString());
         Assert.Equal(originalNameIdentifier, infoClaims.GetProperty(ClaimTypes.NameIdentifier).GetString());
 
-        // And now the email has changed, the refresh token is once again invalidated by the security stamp.
+        // And now the email has changed, the refresh token is invalidated once again invalidated by the security stamp.
         AssertUnauthorizedAndEmpty(await client.PostAsJsonAsync("/identity/refresh", new { RefreshToken = secondRefreshToken }));
 
         // We will finally see all the claims updated after logging in again.
@@ -1173,7 +1163,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         var multipleProblemResponse = await client.PostAsJsonAsync("/identity/account/info", new { newPassword, NewUsername = "taken" });
 
         Assert.Equal(HttpStatusCode.BadRequest, multipleProblemResponse.StatusCode);
-        var problemDetails = await multipleProblemResponse.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        var problemDetails = await multipleProblemResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(problemDetails);
 
         Assert.Equal(2, problemDetails.Errors.Count);
@@ -1350,7 +1340,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
     private static async Task AssertProblemAsync(HttpResponseMessage response, string detail, HttpStatusCode status = HttpStatusCode.Unauthorized)
     {
         Assert.Equal(status, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
         Assert.NotNull(problem);
         Assert.Equal(ReasonPhrases.GetReasonPhrase((int)status), problem.Title);
         Assert.Equal(detail, problem.Detail);
@@ -1359,7 +1349,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
     private static async Task AssertValidationProblemAsync(HttpResponseMessage response, string error)
     {
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(problem);
         var errorEntry = Assert.Single(problem.Errors);
         Assert.Equal(error, errorEntry.Key);
