@@ -5,10 +5,10 @@ namespace Microsoft.AspNetCore.Identity.DTO;
 
 internal sealed class LoginRequest
 {
-    public required string Username { get; init; }
+    public string? Username { get; init; }
     // added after preview7
     // public required string Email { get; init; }
-    public required string Password { get; init; }
+    public string? Password { get; init; }
     public string? TwoFactorCode { get; init; }
     public string? TwoFactorRecoveryCode { get; init; }
 }

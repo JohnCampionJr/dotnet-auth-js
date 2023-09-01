@@ -29,7 +29,7 @@ using Xunit.Sdk;
 
 namespace Microsoft.AspNetCore.Identity.FunctionalTests;
 
-public class UnAuthMapIdentityApiTests : LoggedTest
+public partial class UnAuthMapIdentityApiTests : LoggedTest
 {
     private string Username { get; } = $"{Guid.NewGuid()}@example.com";
     private string Password { get; } = "[PLACEHOLDER]-1a";
@@ -628,10 +628,10 @@ public class UnAuthMapIdentityApiTests : LoggedTest
 
         client.DefaultRequestHeaders.Clear();
 
-        await AssertProblemAsync(await client.PostAsJsonAsync("/identity/login", new { Username, Password }),
+        await AssertProblemAsync(await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password }),
             "RequiresTwoFactor");
 
-        AssertOk(await client.PostAsJsonAsync("/identity/login", new { Username, Password, twoFactorCode }));
+        AssertOk(await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password, twoFactorCode }));
     }
 
     [Fact]

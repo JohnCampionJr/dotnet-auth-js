@@ -71,7 +71,7 @@ public sealed class UnAuthHandler(
                 throw new InvalidOperationException("The UnAuth.TwoFactorUserCookieScheme has not been registered");
             }
 
-            var token = GetTokenOrNull("TwoFactorUserId");
+            var token = GetTokenOrNull("TwoFactorUserIdToken");
             if (token is null)
             {
                 return AuthenticateResult.NoResult();

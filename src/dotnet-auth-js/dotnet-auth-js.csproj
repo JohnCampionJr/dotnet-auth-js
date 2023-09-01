@@ -15,4 +15,21 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="jcamp.BearerToken\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="jcamp.BearerToken\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="jcamp.BearerToken\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="jcamp.BearerToken\**" />
+  </ItemGroup>
+
+
 </Project>

@@ -126,6 +126,27 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
 
             // signInManager.PrimaryAuthenticationScheme = cookieMode == true ? IdentityConstants.ApplicationScheme : IdentityConstants.BearerScheme;
             var isPersistent = persistCookies ?? true;
+            if (login is { Username: null, Password: null, TwoFactorCode: not null })
+            {
+                var user = await signInManager.GetTwoFactorAuthenticationUserAsync();
+                if (user is null) return TypedResults.Problem("Unable to load two-factor authentication user.", statusCode: StatusCodes.Status401Unauthorized);
+                var twoFactorResult = (await signInManager.TwoFactorAuthenticatorSignInAsync(login.TwoFactorCode, isPersistent, rememberClient: isPersistent)).ToUnAuth();
+                if (twoFactorResult.Succeeded) return TypedResults.Ok();
+                return TypedResults.Problem(twoFactorResult.ToString(), statusCode: StatusCodes.Status401Unauthorized);
+                
+            }
+
+            if (login.Username is null || login.Password is null)
+            {
+                return TypedResults.Problem("Validation Problem", statusCode: StatusCodes.Status401Unauthorized);
+            }
+            // var user = await UserManager.FindByNameAsync(userName);
+            // if (user == null)
+            // {
+            //     return SignInResult.Failed;
+            // }
+            //
+            // return await PasswordSignInAsync(user, password, isPersistent, lockoutOnFailure);
 
             var result = (await signInManager.PasswordSignInAsync(login.Username, login.Password,
                 isPersistent, lockoutOnFailure: true)).ToUnAuth();

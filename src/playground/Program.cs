@@ -20,10 +20,10 @@ builder.Services.AddSwaggerGen(c =>
 var dbConnection = new SqliteConnection("DataSource=:memory:");
 builder.Services.AddSingleton(_ => dbConnection);
 
-builder.Services.AddAuthorization(a =>
-{
-    a.AddCombinedPolicies();
-});
+// builder.Services.AddAuthorization(a =>
+// {
+//     a.AddCombinedPolicies();
+// });
 
 builder.Services
     .AddAuthentication(UnAuthConstants.IdentityScheme)
@@ -63,7 +63,7 @@ builder.Services
     .AddApiEndpoints()
     .AddDefaultTokenProviders();
 
-builder.Services.AddTransient<BearerTokenService>();
+builder.Services.AddTransient<UnAuthTokenService>();
 
 var app = builder.Build();
 
@@ -78,7 +78,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGroup("/identity").MyMapIdentityApi<ApplicationUser>();
-app.MapGroup("/identity").ComboMapIdentityApi<ApplicationUser>();
 
 app.MapGet("/cookieonly", (ClaimsPrincipal user) => $"With Cookie: Hello, {user.Identity?.Name}!")
     .RequireAuthorization(MyPolicyConstants.ApplicationOnly);
@@ -93,12 +92,12 @@ authGroup.MapGet(
     "/testtoken",
     (
         ClaimsPrincipal user,
-        BearerTokenService tokenGen,
+        UnAuthTokenService tokenGen,
         TimeProvider timeProvider,
         IOptionsMonitor<BearerTokenOptions> optionsMonitor
     ) =>
     {
-        return TypedResults.Ok(tokenGen.Generate(user, null));
+        return TypedResults.Ok(tokenGen.GenerateIdentity(user, IdentityConstants.BearerScheme));
     }
 );
 
