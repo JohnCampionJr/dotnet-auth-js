@@ -13,6 +13,7 @@ using System.Text.RegularExpressions;
 using Identity.DefaultUI.WebSite;
 using Identity.DefaultUI.WebSite.Data;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -112,8 +113,8 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         {
             services.AddSingleton<TimeProvider>(clock);
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
-            services.AddIdentityCore<ApplicationUser>().AddApiEndpoints().AddEntityFrameworkStores<ApplicationDbContext>();
-            services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
+            services.AddIdentityCore<ApplicationUser>().AddUnAuthServices().AddEntityFrameworkStores<ApplicationDbContext>();
+            services.AddUnAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.BearerTokenExpiration = expireTimeSpan;
             });
@@ -187,8 +188,8 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         await using var app = await CreateAppAsync(services =>
         {
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
-            services.AddIdentityCore<ApplicationUser>().AddApiEndpoints().AddEntityFrameworkStores<ApplicationDbContext>();
-            services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
+            services.AddIdentityCore<ApplicationUser>().AddUnAuthServices().AddEntityFrameworkStores<ApplicationDbContext>();
+            services.AddUnAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.Events.OnMessageReceived = context =>
                 {
@@ -272,8 +273,8 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         {
             services.AddSingleton<TimeProvider>(clock);
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
-            services.AddIdentityCore<ApplicationUser>().AddApiEndpoints().AddEntityFrameworkStores<ApplicationDbContext>();
-            services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
+            services.AddIdentityCore<ApplicationUser>().AddUnAuthServices().AddEntityFrameworkStores<ApplicationDbContext>();
+            services.AddUnAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.RefreshTokenExpiration = expireTimeSpan;
             });
@@ -817,7 +818,7 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         using var client = app.GetTestClient();
 
         await RegisterAsync(client);
-        var loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password });
+        var loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin?cookieMode=true", new { Username, Password });
         ApplyCookies(client, loginResponse);
 
         var twoFactorKeyResponse = await client.GetFromJsonAsync<JsonElement>("/identity/account/2fa");
@@ -839,23 +840,23 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         await AssertProblemAsync(await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password }),
             "RequiresTwoFactor");
 
-        var twoFactorLoginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password, twoFactorCode });
-        
-        var loginContent = await  twoFactorLoginResponse.Content.ReadFromJsonAsync<JsonElement>();
-        // var accessToken = loginContent.GetProperty("access_token").GetString();
-        var rememberToken = loginContent.GetProperty("rememberToken").GetString();
-        // Assert.NotNull(accessToken);
-        // Assert.NotNull(refreshToken);
-        client.DefaultRequestHeaders.Authorization = new("TwoFactorRemember", rememberToken);
+        var twoFactorLoginResponse = await client.PostAsJsonAsync("/identity/unauthlogin?cookieMode=true&persistCookies=false", new { Username, Password, twoFactorCode });
 
-        
+
+
+        //this code adds rememnber header
+        //var loginContent = await twoFactorLoginResponse.Content.ReadFromJsonAsync<JsonElement>();
+        //var rememberToken = loginContent.GetProperty("rememberToken").GetString();
+        //client.DefaultRequestHeaders.Authorization = new("TwoFactorRemember", rememberToken);
+
+
         ApplyCookies(client, twoFactorLoginResponse);
 
         var cookie2faResponse = await client.GetFromJsonAsync<JsonElement>("/identity/account/2fa");
         Assert.True(cookie2faResponse.GetProperty("isTwoFactorEnabled").GetBoolean());
         Assert.False(cookie2faResponse.GetProperty("isMachineRemembered").GetBoolean());
 
-        var persistentLoginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password, twoFactorCode });
+        var persistentLoginResponse = await client.PostAsJsonAsync("/identity/unauthlogin?cookieMode=true", new { Username, Password, twoFactorCode });
         ApplyCookies(client, persistentLoginResponse);
 
         var persistent2faResponse = await client.GetFromJsonAsync<JsonElement>("/identity/account/2fa");
@@ -1202,10 +1203,6 @@ public class UnAuthMapIdentityApiTests : LoggedTest
 
         var app = builder.Build();
 
-        // .AddAuthentication(a =>
-        // {
-        //     a.DefaultScheme = UnAuthConstants.IdentityScheme;
-        // })
         app.UseAuthentication();
         app.UseAuthorization();
 
@@ -1230,26 +1227,8 @@ public class UnAuthMapIdentityApiTests : LoggedTest
         where TUser : class, new()
         where TContext : DbContext
     {
-
-        services
-            .AddAuthentication(UnAuthConstants.IdentityScheme)
-            .AddScheme<UnAuthOptions, UnAuthHandler>(UnAuthConstants.IdentityScheme, _ => { })
-            .AddScheme<UnAuthOptions, UnAuthHandler>(IdentityConstants.TwoFactorUserIdScheme, _ => { })
-            .AddScheme<UnAuthOptions, UnAuthHandler>(IdentityConstants.TwoFactorRememberMeScheme, _ => { })
-            .AddCookie(IdentityConstants.ApplicationScheme)
-            .AddBearerToken(IdentityConstants.BearerScheme);
-         
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<UnAuthOptions>, UnAuthConfigureOptions>());
-        services.AddScoped<UnAuthTokenService>();
-        
-         return services
-             .AddDbContext<TContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
-             .AddIdentityCore<TUser>(_ => { })
-             .AddEntityFrameworkStores<TContext>()
-             .AddApiEndpoints();
-
-         //return services.AddDbContext<TContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
-         //    .AddIdentityApiEndpoints<TUser>().AddEntityFrameworkStores<TContext>();
+        return services.AddDbContext<TContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
+            .AddUnAuthentication<TUser>().AddEntityFrameworkStores<TContext>();
     }
 
     private static IdentityBuilder AddIdentityApiEndpoints(IServiceCollection services)
@@ -1258,20 +1237,14 @@ public class UnAuthMapIdentityApiTests : LoggedTest
     private static IdentityBuilder AddIdentityApiEndpointsBearerOnly(IServiceCollection services)
     {
         services
-            .AddAuthentication(UnAuthConstants.IdentityScheme)
-            .AddScheme<UnAuthOptions, UnAuthHandler>(UnAuthConstants.IdentityScheme, _ => { })
-            .AddScheme<UnAuthOptions, UnAuthHandler>(IdentityConstants.TwoFactorUserIdScheme, _ => { })
-            .AddScheme<UnAuthOptions, UnAuthHandler>(IdentityConstants.TwoFactorRememberMeScheme, _ => { })
+            .AddUnAuthentication()
             .AddBearerToken(IdentityConstants.BearerScheme);
-         
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<UnAuthOptions>, UnAuthConfigureOptions>());
-        services.AddScoped<UnAuthTokenService>();
 
         return services
             .AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
             .AddIdentityCore<ApplicationUser>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddApiEndpoints();
+            .AddUnAuthServices();
     }
 
     private Task<WebApplication> CreateAppAsync(Action<IServiceCollection>? configureServices = null)

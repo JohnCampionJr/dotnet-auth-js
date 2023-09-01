@@ -111,7 +111,7 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             return TypedResults.Problem(result.ToString(), statusCode: StatusCodes.Status401Unauthorized);
         });
         
-        routeGroup.MapPost("/unauthlogin", async Task<Results<Ok<UnAuthTokenResponse>, EmptyHttpResult, ProblemHttpResult>>
+        routeGroup.MapPost("/unauthlogin", async Task<Results<Ok, Ok<UnAuthTokenResponse>, EmptyHttpResult, ProblemHttpResult>>
             (HttpContext ctx, [FromBody] LoginRequest login, [FromQuery] bool? cookieMode, [FromQuery] bool? persistCookies, [FromServices] IServiceProvider sp) =>
         {
             var signInManager = sp.GetRequiredService<SignInManager<TUser>>();
@@ -122,7 +122,7 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             {
                 ctx.Items.Add(UnAuthConstants.CookieMode, cookieMode);
             }
-            
+
             // signInManager.PrimaryAuthenticationScheme = cookieMode == true ? IdentityConstants.ApplicationScheme : IdentityConstants.BearerScheme;
             var isPersistent = persistCookies ?? true;
 
@@ -145,18 +145,19 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             {
                 result.TwoFactorUserIdToken = token;
             }
-            if (ctx.Items.TryGetValue(UnAuthConstants.TwoFactorRememberToken, out var obj2) && obj2 is string token2)
+            if (ctx.Items.TryGetValue(UnAuthConstants.TwoFactorRememberMeToken, out var obj2) && obj2 is string token2)
             {
-                result.TwoFactorRememberToken = token2;
+                result.TwoFactorRememberMeToken = token2;
             }
             
             if (result.Succeeded)
             {
                 if (ctx.Items.TryGetValue(UnAuthConstants.BearerToken, out var obj3) && obj3 is UnAuthTokenResponse token3)
                 {
-                    token3.RememberToken = result.TwoFactorRememberToken;
+                    token3.RememberToken = result.TwoFactorRememberMeToken;
                     return TypedResults.Ok(token3);
                 }
+                return TypedResults.Ok();
             }
 
             

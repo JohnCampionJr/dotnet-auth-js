@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 public class UnAuthSignInResult : SignInResult
 {
     public string? TwoFactorUserIdToken { get; set; }
-    public string? TwoFactorRememberToken { get; set; }
+    public string? TwoFactorRememberMeToken { get; set; }
 
     public Dictionary<string, object?>? ToDictionary()
     {
@@ -12,9 +12,9 @@ public class UnAuthSignInResult : SignInResult
         {
             dictionary.Add(UnAuthConstants.TwoFactorUserIdToken, TwoFactorUserIdToken);
         }
-        if (TwoFactorRememberToken is not null)
+        if (TwoFactorRememberMeToken is not null)
         {
-            dictionary.Add(UnAuthConstants.TwoFactorRememberToken, TwoFactorRememberToken);
+            dictionary.Add(UnAuthConstants.TwoFactorRememberMeToken, TwoFactorRememberMeToken);
         }
 
         return dictionary.Count == 0 ? null : dictionary;

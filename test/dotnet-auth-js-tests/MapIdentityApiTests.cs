@@ -3,7 +3,6 @@
 
 #nullable enable
 
-using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -12,11 +11,11 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Identity.DefaultUI.WebSite;
 using Identity.DefaultUI.WebSite.Data;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.Testing;
@@ -111,7 +110,7 @@ public class MapIdentityApiTests : LoggedTest
             services.AddSingleton<TimeProvider>(clock);
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
             services.AddIdentityCore<ApplicationUser>().AddApiEndpoints().AddEntityFrameworkStores<ApplicationDbContext>();
-            services.AddAuthentication().AddJcampBearerToken(IdentityConstants.BearerScheme, options =>
+            services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.BearerTokenExpiration = expireTimeSpan;
             });
@@ -186,7 +185,7 @@ public class MapIdentityApiTests : LoggedTest
         {
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
             services.AddIdentityCore<ApplicationUser>().AddApiEndpoints().AddEntityFrameworkStores<ApplicationDbContext>();
-            services.AddAuthentication().AddJcampBearerToken(IdentityConstants.BearerScheme, options =>
+            services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.Events.OnMessageReceived = context =>
                 {
@@ -208,7 +207,7 @@ public class MapIdentityApiTests : LoggedTest
 
         // The normal header still works
         client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
-        Assert.Equal($"Hello, {Username}!", await client.GetStringAsync("/auth/hello"));
+        Assert.Equal($"Hello, {Username}!", await client.GetStringAsync($"/auth/hello"));
     }
 
     [Theory]
@@ -218,13 +217,13 @@ public class MapIdentityApiTests : LoggedTest
         await using var app = await CreateAppAsync(AddIdentityActions[addIdentityMode]);
         using var client = app.GetTestClient();
 
-        AssertUnauthorizedAndEmpty(await client.GetAsync("/auth/hello"));
+        AssertUnauthorizedAndEmpty(await client.GetAsync($"/auth/hello"));
 
         client.DefaultRequestHeaders.Authorization = new("Bearer");
-        AssertUnauthorizedAndEmpty(await client.GetAsync("/auth/hello"));
+        AssertUnauthorizedAndEmpty(await client.GetAsync($"/auth/hello"));
 
         client.DefaultRequestHeaders.Authorization = new("Bearer", "");
-        AssertUnauthorizedAndEmpty(await client.GetAsync("/auth/hello"));
+        AssertUnauthorizedAndEmpty(await client.GetAsync($"/auth/hello"));
     }
 
     [Theory]
@@ -271,7 +270,7 @@ public class MapIdentityApiTests : LoggedTest
             services.AddSingleton<TimeProvider>(clock);
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
             services.AddIdentityCore<ApplicationUser>().AddApiEndpoints().AddEntityFrameworkStores<ApplicationDbContext>();
-            services.AddAuthentication().AddJcampBearerToken(IdentityConstants.BearerScheme, options =>
+            services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.RefreshTokenExpiration = expireTimeSpan;
             });
@@ -521,7 +520,7 @@ public class MapIdentityApiTests : LoggedTest
             });
         }, autoStart: false);
 
-        app.MapGroup("/identity2").MyMapIdentityApi<ApplicationUser>();
+        app.MapGroup("/identity2").MapIdentityApi<ApplicationUser>();
 
         await app.StartAsync();
         using var client = app.GetTestClient();
@@ -542,7 +541,7 @@ public class MapIdentityApiTests : LoggedTest
 
         // Even with OnModelCreating tricks to prefix table names, using the same database
         // for multiple user tables is difficult because index conflics, so we just use a different db.
-        var dbConnection2 = new SqliteConnection("DataSource=:memory:");
+        var dbConnection2 = new SqliteConnection($"DataSource=:memory:");
 
         await using var app = await CreateAppAsync<ApplicationUser, ApplicationDbContext>(services =>
         {
@@ -568,7 +567,7 @@ public class MapIdentityApiTests : LoggedTest
         await dbConnection2.OpenAsync();
         await app.Services.GetRequiredService<IdentityDbContext>().Database.EnsureCreatedAsync();
 
-        app.MapGroup("/identity2").MyMapIdentityApi<IdentityUser>();
+        app.MapGroup("/identity2").MapIdentityApi<IdentityUser>();
 
         await app.StartAsync();
         using var client = app.GetTestClient();
@@ -599,7 +598,7 @@ public class MapIdentityApiTests : LoggedTest
 
         client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
 
-        // We cannot enable 2fa without verifying we can produce a valid token.
+        // We cannot enable 2fa without verifying we can produce a valid
         await AssertValidationProblemAsync(await client.PostAsJsonAsync("/identity/account/2fa", new { Enable = true }),
             "RequiresTwoFactor");
         await AssertValidationProblemAsync(await client.PostAsJsonAsync("/identity/account/2fa", new { Enable = true, TwoFactorCode = "wrong" }),
@@ -614,7 +613,7 @@ public class MapIdentityApiTests : LoggedTest
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         var enable2faResponse = await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true });
         var enable2faContent = await enable2faResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -654,7 +653,7 @@ public class MapIdentityApiTests : LoggedTest
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         var enable2faResponse = await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true });
         var enable2faContent = await enable2faResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -704,7 +703,7 @@ public class MapIdentityApiTests : LoggedTest
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         await AssertValidationProblemAsync(await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true, ResetSharedKey = true }),
             "CannotResetSharedKeyAndEnable");
@@ -720,7 +719,7 @@ public class MapIdentityApiTests : LoggedTest
         var resetSharedKey = resetKeyContent.GetProperty("sharedKey").GetString();
 
         var resetKeyBytes = Base32.FromBase32(sharedKey);
-        var resetTwoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var resetTwoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         // The old 2fa code no longer works
         await AssertValidationProblemAsync(await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true }),
@@ -750,7 +749,7 @@ public class MapIdentityApiTests : LoggedTest
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         var enable2faResponse = await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true });
         var enable2faContent = await enable2faResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -817,24 +816,28 @@ public class MapIdentityApiTests : LoggedTest
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
 
         var enable2faResponse = await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true });
         var enable2faContent = await enable2faResponse.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(enable2faContent.GetProperty("isTwoFactorEnabled").GetBoolean());
         Assert.False(enable2faContent.GetProperty("isMachineRemembered").GetBoolean());
 
+        client.DefaultRequestHeaders.Clear();
+
         await AssertProblemAsync(await client.PostAsJsonAsync("/identity/login", new { Username, Password }),
             "RequiresTwoFactor");
 
-        var twoFactorLoginResponse = await client.PostAsJsonAsync("/identity/login?cookieMode=true&persistCookies=false", new { Username, Password, twoFactorCode });
+        var twoFactorLoginResponse = await client.PostAsJsonAsync("/identity/login?cookieMode=true", new { Username, Password, twoFactorCode });
         ApplyCookies(client, twoFactorLoginResponse);
 
         var cookie2faResponse = await client.GetFromJsonAsync<JsonElement>("/identity/account/2fa");
         Assert.True(cookie2faResponse.GetProperty("isTwoFactorEnabled").GetBoolean());
-        Assert.False(cookie2faResponse.GetProperty("isMachineRemembered").GetBoolean());
+        Assert.False(enable2faContent.GetProperty("isMachineRemembered").GetBoolean());
 
-        var persistentLoginResponse = await client.PostAsJsonAsync("/identity/login?cookieMode=true", new { Username, Password, twoFactorCode });
+        client.DefaultRequestHeaders.Clear();
+
+        var persistentLoginResponse = await client.PostAsJsonAsync("/identity/login?cookieMode=true&persistCookies=true", new { Username, Password, twoFactorCode });
         ApplyCookies(client, persistentLoginResponse);
 
         var persistent2faResponse = await client.GetFromJsonAsync<JsonElement>("/identity/account/2fa");
@@ -1010,7 +1013,7 @@ public class MapIdentityApiTests : LoggedTest
         Assert.Equal(Username, claimsAfterEmailChange.GetProperty(ClaimTypes.Email).GetString());
         Assert.Equal(originalNameIdentifier, infoClaims.GetProperty(ClaimTypes.NameIdentifier).GetString());
 
-        // And now the email has changed, the refresh token is once again invalidated by the security stamp.
+        // And now the email has changed, the refresh token is invalidated once again invalidated by the security stamp.
         AssertUnauthorizedAndEmpty(await client.PostAsJsonAsync("/identity/refresh", new { RefreshToken = secondRefreshToken }));
 
         // We will finally see all the claims updated after logging in again.
@@ -1130,9 +1133,9 @@ public class MapIdentityApiTests : LoggedTest
         client.DefaultRequestHeaders.Clear();
 
         // We can immediately log in with the new password
-        await AssertProblemAsync(await client.PostAsJsonAsync("/identity/login", new { Username, Password }),
+        await AssertProblemAsync(await client.PostAsJsonAsync($"/identity/login", new { Username, Password }),
             "Failed");
-        AssertOk(await client.PostAsJsonAsync("/identity/login", new { Username, Password = newPassword }));
+        AssertOk(await client.PostAsJsonAsync($"/identity/login", new { Username, Password = newPassword }));
     }
 
     [Fact]
@@ -1151,7 +1154,7 @@ public class MapIdentityApiTests : LoggedTest
         var multipleProblemResponse = await client.PostAsJsonAsync("/identity/account/info", new { newPassword, NewUsername = "taken" });
 
         Assert.Equal(HttpStatusCode.BadRequest, multipleProblemResponse.StatusCode);
-        var problemDetails = await multipleProblemResponse.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        var problemDetails = await multipleProblemResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(problemDetails);
 
         Assert.Equal(2, problemDetails.Errors.Count);
@@ -1160,7 +1163,7 @@ public class MapIdentityApiTests : LoggedTest
 
         // We can in fact update multiple things at once if we do it correctly though.
         AssertOk(await client.PostAsJsonAsync("/identity/account/info", new { OldPassword = Password, newPassword, NewUsername = "not-taken" }));
-        AssertOk(await client.PostAsJsonAsync("/identity/login", new { Username = "not-taken", Password = newPassword }));
+        AssertOk(await client.PostAsJsonAsync($"/identity/login", new { Username = "not-taken", Password = newPassword }));
     }
 
     private async Task<WebApplication> CreateAppAsync<TUser, TContext>(Action<IServiceCollection>? configureServices, bool autoStart = true)
@@ -1172,7 +1175,7 @@ public class MapIdentityApiTests : LoggedTest
         builder.Services.AddSingleton(LoggerFactory);
         builder.Services.AddAuthorization();
 
-        var dbConnection = new SqliteConnection("DataSource=:memory:");
+        var dbConnection = new SqliteConnection($"DataSource=:memory:");
         // Dispose SqliteConnection with host by registering as a singleton factory.
         builder.Services.AddSingleton(_ => dbConnection);
 
@@ -1184,7 +1187,7 @@ public class MapIdentityApiTests : LoggedTest
         app.UseAuthentication();
         app.UseAuthorization();
 
-        app.MapGroup("/identity").MyMapIdentityApi<TUser>();
+        app.MapGroup("/identity").MapIdentityApi<TUser>();
 
         var authGroup = app.MapGroup("/auth").RequireAuthorization();
         authGroup.MapGet("/hello",
@@ -1205,23 +1208,8 @@ public class MapIdentityApiTests : LoggedTest
         where TUser : class, new()
         where TContext : DbContext
     {
-        // JJC Had to do this because composite identity handler is internal
-        services
-         .AddDbContext<TContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
-         .AddAuthentication(MyIdentityConstants.BearerAndApplicationScheme)
-         .AddScheme<AuthenticationSchemeOptions, CompositeIdentityHandler>(MyIdentityConstants.BearerAndApplicationScheme, null, compositeOptions =>
-         {
-             compositeOptions.ForwardDefault = IdentityConstants.BearerScheme;
-             compositeOptions.ForwardAuthenticate = MyIdentityConstants.BearerAndApplicationScheme;
-         })
-         .AddJcampBearerToken(IdentityConstants.BearerScheme)
-         .AddIdentityCookies();
-
-        return services.AddIdentityCore<TUser>(_ => { })
-            .AddApiEndpoints().AddEntityFrameworkStores<TContext>();
-
-        //return services.AddDbContext<TContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
-        //    .AddIdentityApiEndpoints<TUser>().AddEntityFrameworkStores<TContext>();
+        return services.AddDbContext<TContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
+            .AddIdentityApiEndpoints<TUser>().AddEntityFrameworkStores<TContext>();
     }
 
     private static IdentityBuilder AddIdentityApiEndpoints(IServiceCollection services)
@@ -1231,7 +1219,7 @@ public class MapIdentityApiTests : LoggedTest
     {
         services
             .AddAuthentication()
-            .AddJcampBearerToken(IdentityConstants.BearerScheme);
+            .AddBearerToken(IdentityConstants.BearerScheme);
 
         return services
             .AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
@@ -1343,7 +1331,7 @@ public class MapIdentityApiTests : LoggedTest
     private static async Task AssertProblemAsync(HttpResponseMessage response, string detail, HttpStatusCode status = HttpStatusCode.Unauthorized)
     {
         Assert.Equal(status, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
         Assert.NotNull(problem);
         Assert.Equal(ReasonPhrases.GetReasonPhrase((int)status), problem.Title);
         Assert.Equal(detail, problem.Detail);
@@ -1352,7 +1340,7 @@ public class MapIdentityApiTests : LoggedTest
     private static async Task AssertValidationProblemAsync(HttpResponseMessage response, string error)
     {
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(problem);
         var errorEntry = Assert.Single(problem.Errors);
         Assert.Equal(error, errorEntry.Key);
