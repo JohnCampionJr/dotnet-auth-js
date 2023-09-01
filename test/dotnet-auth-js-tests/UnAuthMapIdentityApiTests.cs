@@ -830,14 +830,6 @@ public partial class UnAuthMapIdentityApiTests : LoggedTest
 
         var twoFactorLoginResponse = await client.PostAsJsonAsync("/identity/unauthlogin?cookieMode=true&persistCookies=false", new { Username, Password, twoFactorCode });
 
-
-
-        //this code adds rememnber header
-        //var loginContent = await twoFactorLoginResponse.Content.ReadFromJsonAsync<JsonElement>();
-        //var rememberToken = loginContent.GetProperty("rememberToken").GetString();
-        //client.DefaultRequestHeaders.Authorization = new("TwoFactorRemember", rememberToken);
-
-
         ApplyCookies(client, twoFactorLoginResponse);
 
         var cookie2faResponse = await client.GetFromJsonAsync<JsonElement>("/identity/account/2fa");
@@ -852,6 +844,20 @@ public partial class UnAuthMapIdentityApiTests : LoggedTest
         var persistent2faResponse = await client.GetFromJsonAsync<JsonElement>("/identity/account/2fa");
         Assert.True(persistent2faResponse.GetProperty("isTwoFactorEnabled").GetBoolean());
         Assert.True(persistent2faResponse.GetProperty("isMachineRemembered").GetBoolean());
+        
+        client.DefaultRequestHeaders.Clear();
+
+        var headerRememberLoginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password, twoFactorCode });
+        // this code adds rememnber header
+        var loginContent = await headerRememberLoginResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var rememberToken = loginContent.GetProperty("rememberToken").GetString();
+        var bearerToken = loginContent.GetProperty("access_token").GetString();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", bearerToken);
+        client.DefaultRequestHeaders.Add("TwoFactorRemember", rememberToken);
+
+        var persistentToken2faResponse = await client.GetFromJsonAsync<JsonElement>("/identity/account/2fa");
+        Assert.True(persistentToken2faResponse.GetProperty("isTwoFactorEnabled").GetBoolean());
+        Assert.True(persistentToken2faResponse.GetProperty("isMachineRemembered").GetBoolean());
     }
 
     [Fact]

@@ -128,7 +128,7 @@ public sealed class UnAuthHandler(
                     return AuthenticateResult.NoResult();
                 }
 
-                var ticket = Options.TwoFactorUserIdTokenProtector.Unprotect(token);
+                var ticket = Options.TwoFactorRememberTokenProtector.Unprotect(token);
 
                 if (ticket?.Properties?.ExpiresUtc is not { } expiresUtc)
                 {
@@ -268,9 +268,21 @@ public sealed class UnAuthHandler(
 
         if (!tokenId.EndsWith(" "))
             tokenId += " ";
-
-        return authorization.StartsWith(tokenId, StringComparison.Ordinal)
+        
+        var authString = authorization.StartsWith(tokenId, StringComparison.Ordinal)
             ? authorization[tokenId.Length..]
             : null;
+
+        // this allows us to store the two factor headers alongside the authorization header
+        if (authString is null)
+        {
+            var other = Request.Headers[tokenId.Trim()];
+            if (other.Count > 0)
+            {
+                authString = other[0];
+            }
+        }
+
+        return authString;
     }
 }
