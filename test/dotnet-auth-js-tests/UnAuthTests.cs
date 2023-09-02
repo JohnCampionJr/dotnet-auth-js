@@ -16,7 +16,7 @@ public partial class UnAuthMapIdentityApiTests
         await using var app = await CreateAppAsync();
         using var client = app.GetTestClient();
 
-        var result = await client.PostAsJsonAsync("/identity/unauthlogin", new { });
+        var result = await client.PostAsJsonAsync("/identity/unlogin", new { });
         AssertBadRequestAndEmpty(result);
     }
 
@@ -26,7 +26,7 @@ public partial class UnAuthMapIdentityApiTests
         await using var app = await CreateAppAsync();
         using var client = app.GetTestClient();
 
-        var response = await client.PostAsJsonAsync("/identity/unauthlogin", new { TwoFactorCode = "123456"});
+        var response = await client.PostAsJsonAsync("/identity/unlogin", new { TwoFactorCode = "123456"});
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -36,7 +36,7 @@ public partial class UnAuthMapIdentityApiTests
         await using var app = await CreateAppAsync();
         using var client = app.GetTestClient();
 
-        var response = await client.PostAsJsonAsync("/identity/unauthlogin", new { TwoFactorRecoveryCode = "123456"});
+        var response = await client.PostAsJsonAsync("/identity/unlogin", new { TwoFactorRecoveryCode = "123456"});
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -48,7 +48,7 @@ public partial class UnAuthMapIdentityApiTests
         await using var app = await CreateAppAsync();
         using var client = app.GetTestClient();
 
-        var result = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username = username, Password });
+        var result = await client.PostAsJsonAsync("/identity/unlogin", new { Username = username, Password });
         AssertBadRequestAndEmpty(result);
     }
 
@@ -60,7 +60,7 @@ public partial class UnAuthMapIdentityApiTests
         await using var app = await CreateAppAsync();
         using var client = app.GetTestClient();
 
-        var result = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password = password });
+        var result = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password = password });
         AssertBadRequestAndEmpty(result);
     }
     
@@ -72,7 +72,7 @@ public partial class UnAuthMapIdentityApiTests
         using var client = app.GetTestClient();
 
         await RegisterAsync(client);
-        var loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password });
+        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password });
 
         var loginContent = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
         var accessToken = loginContent.GetProperty("access_token").GetString();
@@ -116,7 +116,7 @@ public partial class UnAuthMapIdentityApiTests
         client.DefaultRequestHeaders.Clear();
         
         // changes start here for two step
-        var twoFactorStep1 = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password });
+        var twoFactorStep1 = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password });
         var twoFactorContent = await twoFactorStep1.Content.ReadFromJsonAsync<JsonElement>();
         AssertProblemWithJson(twoFactorStep1, twoFactorContent, "RequiresTwoFactor");
         ApplyCookiesMaybe(client, twoFactorStep1);
@@ -124,7 +124,7 @@ public partial class UnAuthMapIdentityApiTests
         var twoFactorUserIdToken = twoFactorContent.GetProperty(IdentityConstants.TwoFactorUserIdScheme).GetString();
         client.DefaultRequestHeaders.Authorization = new("TwoFactorUserIdToken", twoFactorUserIdToken);
 
-        AssertOk(await client.PostAsJsonAsync("/identity/unauthlogin", new { twoFactorCode }));
+        AssertOk(await client.PostAsJsonAsync("/identity/unlogin", new { twoFactorCode }));
     }
 
     [Theory]
@@ -135,7 +135,7 @@ public partial class UnAuthMapIdentityApiTests
         using var client = app.GetTestClient();
 
         await RegisterAsync(client);
-        var loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password });
+        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password });
 
         var loginContent = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
         var accessToken = loginContent.GetProperty("access_token").GetString();
@@ -159,7 +159,7 @@ public partial class UnAuthMapIdentityApiTests
         client.DefaultRequestHeaders.Clear();
 
         // changes start here for two step
-        var twoFactorStep1 = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password });
+        var twoFactorStep1 = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password });
         var twoFactorContent = await twoFactorStep1.Content.ReadFromJsonAsync<JsonElement>();
         AssertProblemWithJson(twoFactorStep1, twoFactorContent, "RequiresTwoFactor");
         ApplyCookiesMaybe(client, twoFactorStep1);
@@ -167,7 +167,7 @@ public partial class UnAuthMapIdentityApiTests
         var twoFactorUserIdToken = twoFactorContent.GetProperty(IdentityConstants.TwoFactorUserIdScheme).GetString();
         client.DefaultRequestHeaders.Authorization = new("TwoFactorUserIdToken", twoFactorUserIdToken);
         
-        var recoveryLoginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { TwoFactorRecoveryCode = recoveryCodes[0] });
+        var recoveryLoginResponse = await client.PostAsJsonAsync("/identity/unlogin", new { TwoFactorRecoveryCode = recoveryCodes[0] });
         AssertOk(recoveryLoginResponse);
         
         // same below
@@ -183,7 +183,7 @@ public partial class UnAuthMapIdentityApiTests
 
         client.DefaultRequestHeaders.Clear();
 
-        AssertOk(await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password }));
+        AssertOk(await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password }));
     }
     
     [Fact]
@@ -193,7 +193,7 @@ public partial class UnAuthMapIdentityApiTests
         using var client = app.GetTestClient();
 
         await RegisterAsync(client);
-        var loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin", new { Username, Password });
+        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password });
 
         loginResponse.EnsureSuccessStatusCode();
 
@@ -217,7 +217,7 @@ public partial class UnAuthMapIdentityApiTests
         using var client = app.GetTestClient();
 
         await RegisterAsync(client);
-        var loginResponse = await client.PostAsJsonAsync("/identity/unauthlogin?cookieMode=true", new { Username, Password });
+        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin?cookieMode=true", new { Username, Password });
 
         loginResponse.EnsureSuccessStatusCode();
 

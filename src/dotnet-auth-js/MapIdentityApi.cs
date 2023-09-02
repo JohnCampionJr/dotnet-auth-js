@@ -112,8 +112,8 @@ public static partial class IdentityApiEndpointRouteBuilderExtensions
             return TypedResults.Problem(result.ToString(), statusCode: StatusCodes.Status401Unauthorized);
         });
         
-        routeGroup.MapPost("/unauthlogin", async Task<Results<Ok, Ok<UnAuthTokenResponse>, EmptyHttpResult, ProblemHttpResult, BadRequest>>
-            (HttpContext ctx, [FromBody] LoginRequest login, [FromQuery] bool? cookieMode, [FromQuery] bool? persistCookies, [FromServices] IServiceProvider sp) =>
+        routeGroup.MapPost("/unlogin", async Task<Results<Ok, Ok<UnAuthTokenResponse>, EmptyHttpResult, ProblemHttpResult, BadRequest>>
+            (HttpContext ctx, [FromBody] UnAuthLoginRequest login, [FromQuery] bool? cookieMode, [FromQuery] bool? persistCookies, [FromServices] IServiceProvider sp) =>
         {
             // check the requirements first
             if (!(login is { Username: not (null or ""), Password: not (null or "") } ||
