@@ -2,13 +2,17 @@
 A project expanding on .NET 8.0's Minimal API Auth
 
 ### Ideas
-- Separate Mappings to separate static methods for use in controllers if desired
-- Database helpers for quick setup
+-[ ] Roles
+-[ ] Separate Mappings to separate static methods for use in controllers if desired
+-[ ] Database helpers for quick setup (would need separate packages for dependencies though)
+
  
 
 ### Post .NET 8.0 Preview 7 changes
-- AccessTokenResponse JSON Changes
-- DTOs will be public from dotnet (rc.2 it appears)
+-[X] Change to email/password instead of username 
+-[ ] AccessTokenResponse JSON Changes (can't do until rc1, due to BearerToken)
+-[ ] DTOs will be public from dotnet (rc.2 it appears)
+-[ ] Once MapIdentityApi is stable, remove its code and rely on dotnet code (probably rc2 or release)
 
 ### Related Issues
 [#49957 BearerAndApplicationScheme](https://github.com/dotnet/aspnetcore/issues/49957)
