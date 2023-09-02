@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authentication.BearerToken;
 // Based off of the BearerTokenHandler
 // https://github.com/dotnet/aspnetcore/blob/main/src/Security/Authentication/BearerToken/src/BearerTokenHandler.cs
 
+namespace UnAuth;
+
 internal sealed class UnAuthTokenService(IOptionsMonitor<UnAuthOptions> unAuthOptionsMonitor, IOptionsMonitor<BearerTokenOptions> bearerOptionsMonitor, TimeProvider timeProvider)
 {
     public UnAuthTokenResponse GenerateIdentity(

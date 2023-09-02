@@ -3,6 +3,8 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 
+namespace UnAuth;
+
 public enum UnAuthSchemes
 {
     Bearer,

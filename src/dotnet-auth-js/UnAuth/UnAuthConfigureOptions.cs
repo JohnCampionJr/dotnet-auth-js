@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
+namespace UnAuth;
+
 public sealed class UnAuthConfigureOptions(IDataProtectionProvider dp) : IConfigureNamedOptions<UnAuthOptions>
 {
     

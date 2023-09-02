@@ -1,4 +1,4 @@
-
+namespace UnAuth;
 public static class UnAuthConstants
 {
     public static readonly string IdentityScheme = "Identity.UnAuth";

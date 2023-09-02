@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 
+namespace UnAuth;
+
 /// <summary>
 /// The JSON data transfer object for the bearer token response.
 /// </summary>
