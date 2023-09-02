@@ -22,7 +22,9 @@ Similar to the cookie based Identity, UnAuth sends tokens for two factor two ste
 - [ ] Samples
 - [ ] Plugin system for email sender, other dependencies
 - [ ] Passwordless
+- [ ] [CSRF Mitigation](https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery?view=aspnetcore-8.0)
 - [X] External logins
+
 
 
 ### Post .NET 8.0 Preview 7 changes
