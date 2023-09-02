@@ -1,8 +1,9 @@
 ﻿using System.Text.Json.Serialization;
+
 /// <summary>
 /// The JSON data transfer object for the bearer token response.
 /// </summary>
-public sealed class OrigAccessTokenResponse
+public sealed class AccessTokenResponse
 {
     /// <summary>
     /// The value is always "Bearer" which indicates this response provides a "Bearer" token
@@ -12,7 +13,7 @@ public sealed class OrigAccessTokenResponse
     /// This is serialized as "token_type": "Bearer" using System.Text.Json.
     /// </remarks>
     [JsonPropertyName("token_type")]
-    public string TokenType { get; } = "Bearer";
+    public string TokenType { get; set; } = "Bearer";
 
     /// <summary>
     /// The opaque bearer token to send as part of the Authorization request header.
