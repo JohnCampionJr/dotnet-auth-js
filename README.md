@@ -22,10 +22,10 @@ Similar to the cookie based Identity, UnAuth sends tokens for two factor two ste
 
 
 ### Post .NET 8.0 Preview 7 changes
--[X] Change to email/password instead of username 
--[ ] AccessTokenResponse JSON Changes (can't do until rc1, due to BearerToken)
--[ ] DTOs will be public from dotnet (rc.2 it appears)
--[ ] Once MapIdentityApi is stable, remove its code and rely on dotnet code (probably rc2 or release)
+- [X] Change to email/password instead of username 
+- [ ] AccessTokenResponse JSON Changes (can't do until rc1, due to BearerToken)
+- [ ] DTOs will be public from dotnet (rc.2 it appears)
+- [ ] Once MapIdentityApi is stable, remove its code and rely on dotnet code (probably rc2 or release)
 
 ### Related Issues
 [#49957 BearerAndApplicationScheme](https://github.com/dotnet/aspnetcore/issues/49957)
