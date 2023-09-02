@@ -9,6 +9,7 @@ A project expanding on .NET 8.0's Minimal API Auth.
 - Uses standard ASP.NET Core Identity, with Bearer and Cookie Schemes for proven security.
 - Does not require storing and sending password twice for two factor logging in.  
 - Allows for a token to prevent requiring two factor codes with every login (another flaw in the .NET minimal API for me)
+- Allows external logins
 
 Similar to the cookie based Identity, UnAuth sends tokens for two factor two step logging in and remembering the machine so a two factor code is not needed with every login  
 
@@ -19,6 +20,9 @@ Similar to the cookie based Identity, UnAuth sends tokens for two factor two ste
 - [ ] Email sender configurations
 - [ ] Documentation - see unit tests for now
 - [ ] Samples
+- [ ] Plugin system for email sender, other dependencies
+- [ ] Passwordless
+- [X] External logins
 
 
 ### Post .NET 8.0 Preview 7 changes

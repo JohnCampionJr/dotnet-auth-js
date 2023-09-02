@@ -10,7 +10,11 @@ using Microsoft.AspNetCore.Authentication.BearerToken;
 
 namespace UnAuth;
 
-internal sealed class UnAuthTokenService(IOptionsMonitor<UnAuthOptions> unAuthOptionsMonitor, IOptionsMonitor<BearerTokenOptions> bearerOptionsMonitor, TimeProvider timeProvider)
+internal sealed class UnAuthTokenService(
+    IOptionsMonitor<UnAuthSchemeOptions> unAuthOptionsMonitor,
+    IOptionsMonitor<BearerTokenOptions> bearerOptionsMonitor,
+    TimeProvider timeProvider
+)
 {
     public UnAuthTokenResponse GenerateIdentity(
         ClaimsPrincipal user,
@@ -86,7 +90,11 @@ internal sealed class UnAuthTokenService(IOptionsMonitor<UnAuthOptions> unAuthOp
         AuthenticationProperties properties
     ) => new(user, properties, $"{authenticationScheme}:AccessToken");
 
-    private AuthenticationTicket CreateRefreshTicket(ClaimsPrincipal user, string authenticationScheme, DateTimeOffset expires)
+    private AuthenticationTicket CreateRefreshTicket(
+        ClaimsPrincipal user,
+        string authenticationScheme,
+        DateTimeOffset expires
+    )
     {
         var refreshProperties = new AuthenticationProperties { ExpiresUtc = expires };
         return new AuthenticationTicket(

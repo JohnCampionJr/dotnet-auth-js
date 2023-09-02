@@ -167,7 +167,7 @@ public partial class UnAuthMapIdentityApiTests : LoggedTest
         {
             services.AddSingleton<TimeProvider>(clock);
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
-            services.AddIdentityCore<ApplicationUser>().AddUnAuthServices().AddEntityFrameworkStores<ApplicationDbContext>();
+            services.AddIdentityCore<ApplicationUser>().AddUnAuthIdentityServices().AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddUnAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.BearerTokenExpiration = expireTimeSpan;
@@ -242,7 +242,7 @@ public partial class UnAuthMapIdentityApiTests : LoggedTest
         await using var app = await CreateAppAsync(services =>
         {
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
-            services.AddIdentityCore<ApplicationUser>().AddUnAuthServices().AddEntityFrameworkStores<ApplicationDbContext>();
+            services.AddIdentityCore<ApplicationUser>().AddUnAuthIdentityServices().AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddUnAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.Events.OnMessageReceived = context =>
@@ -327,7 +327,7 @@ public partial class UnAuthMapIdentityApiTests : LoggedTest
         {
             services.AddSingleton<TimeProvider>(clock);
             services.AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
-            services.AddIdentityCore<ApplicationUser>().AddUnAuthServices().AddEntityFrameworkStores<ApplicationDbContext>();
+            services.AddIdentityCore<ApplicationUser>().AddUnAuthIdentityServices().AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddUnAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
             {
                 options.RefreshTokenExpiration = expireTimeSpan;
@@ -1286,7 +1286,7 @@ public partial class UnAuthMapIdentityApiTests : LoggedTest
     }
 
     private async Task<WebApplication> CreateAppAsync<TUser, TContext>(Action<IServiceCollection>? configureServices, bool autoStart = true)
-        where TUser : class, new()
+        where TUser : IdentityUser, new()
         where TContext : DbContext
     {
         var builder = WebApplication.CreateSlimBuilder();
@@ -1352,7 +1352,7 @@ public partial class UnAuthMapIdentityApiTests : LoggedTest
             .AddDbContext<ApplicationDbContext>((sp, options) => options.UseSqlite(sp.GetRequiredService<SqliteConnection>()))
             .AddIdentityCore<ApplicationUser>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddUnAuthServices();
+            .AddUnAuthIdentityServices();
     }
 
     private Task<WebApplication> CreateAppAsync(Action<IServiceCollection>? configureServices = null)

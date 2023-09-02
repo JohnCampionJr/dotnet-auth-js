@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Builder;
@@ -50,6 +51,7 @@ public static partial class UnAuthRouteBuilderExtensions
 
         // We'll figure out a unique endpoint name based on the final route pattern during endpoint generation.
         string? confirmEmailEndpointName = null;
+        string? externalCallbackEndpointName = null;
 
         var routeGroup = endpoints.MapGroup("");
 
@@ -140,7 +142,7 @@ public static partial class UnAuthRouteBuilderExtensions
             }
 
             var signInManager = sp.GetRequiredService<SignInManager<TUser>>();
-            signInManager.PrimaryAuthenticationScheme = UnAuthConstants.IdentityScheme;
+            signInManager.PrimaryAuthenticationScheme = UnAuthConstants.AuthScheme;
             
             var result = SignInResult.Failed.ToUnAuth();
 
@@ -162,19 +164,18 @@ public static partial class UnAuthRouteBuilderExtensions
                     result = (await signInManager.TwoFactorRecoveryCodeSignInAsync(login.TwoFactorRecoveryCode)).ToUnAuth();
                 }
             }
-            
-            if (ctx.Items.TryGetValue(UnAuthContextItems.TwoFactorUserId, out var obj) && obj is string token)
+            if (ctx.Items[UnAuthContextItems.TwoFactorUserId] is string token)
             {
                 result.TwoFactorUserIdToken = token;
             }
-            if (ctx.Items.TryGetValue(UnAuthContextItems.TwoFactorRememberMe, out var obj2) && obj2 is string token2)
+            if (ctx.Items[UnAuthContextItems.TwoFactorRememberMe] is string token2)
             {
                 result.TwoFactorRememberMeToken = token2;
             }
             
             if (result.Succeeded)
             {
-                if (ctx.Items.TryGetValue(UnAuthContextItems.Bearer, out var obj3) && obj3 is UnAuthTokenResponse bearerToken)
+                if (ctx.Items[UnAuthContextItems.Bearer] is UnAuthTokenResponse bearerToken)
                 {
                     // set the bearer Token's Remember to the TwoFactor if provided
                     bearerToken.RememberToken = result.TwoFactorRememberMeToken;
@@ -188,6 +189,84 @@ public static partial class UnAuthRouteBuilderExtensions
             return TypedResults.Problem(result.ToString(), statusCode: StatusCodes.Status401Unauthorized, extensions: result.ToDictionary());
         });
         
+        routeGroup.MapPost(
+            "/external-login",
+            (LinkGenerator linkGenerator, HttpContext context, SignInManager<TUser> signInManager, string provider, string returnUrl = "/") =>
+            {
+                if (externalCallbackEndpointName is null)
+                {
+                    throw new NotSupportedException("No external login callback endpoint was registered!");
+                }
+                
+                var redirectUrl = linkGenerator.GetUriByName(context, externalCallbackEndpointName, new { returnUrl })
+                                  ?? throw new NotSupportedException($"Could not find endpoint named '{externalCallbackEndpointName}'.");
+                
+                var properties = signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+                properties.AllowRefresh = true;
+                var result = Results.Challenge(properties, new List<string> { provider });
+                return result;
+            }
+        );
+
+        routeGroup
+            .MapGet(
+                "/external-auth-callback",
+                async (HttpContext ctx, SignInManager<TUser> signInManager, UserManager<TUser> userManager, [FromServices] IServiceProvider sp, string? returnUrl) =>
+                {
+                    signInManager.PrimaryAuthenticationScheme = UnAuthConstants.AuthScheme;
+                    var info = await signInManager.GetExternalLoginInfoAsync();
+
+                    // behind the scenes, this happens
+                    // var user = await UserManager.FindByLoginAsync(loginProvider, providerKey);
+                    // return await SignInOrTwoFactorAsync(user, isPersistent, loginProvider, bypassTwoFactor);
+
+                    //TODO: check for changed emails, as external login can login with same external account but new address
+
+                    if (info is null)
+                    {
+                        return Results.Redirect("/");
+                    }
+
+                    var email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? "";
+                    var username = info.Principal.FindFirstValue(ClaimTypes.Name);
+                    var user = await userManager.FindByEmailAsync(email);
+
+                    var signInResult = await signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, false);
+                    if (signInResult.Succeeded && user is not null)
+                    {
+                        return await UnAuthExternalLogin(ctx, signInManager, user, returnUrl);
+                    }
+
+                    if (email is not (null or ""))
+                    {
+                        if (user is null)
+                        {
+                            user = new();
+                            
+                            var userStore = sp.GetRequiredService<IUserStore<TUser>>();
+                            var emailStore = (IUserEmailStore<TUser>)userStore;
+
+                            await userStore.SetUserNameAsync(user, email, CancellationToken.None);
+                            await emailStore.SetEmailAsync(user, email, CancellationToken.None);
+                            await emailStore.SetEmailConfirmedAsync(user, true, CancellationToken.None);
+                            await userManager.CreateAsync(user);
+                        }
+
+                        await userManager.AddLoginAsync(user, info);
+                        await signInManager.SignInAsync(user, false);
+                        return await UnAuthExternalLogin(ctx, signInManager, user, returnUrl);
+                    }
+                    return Results.Unauthorized();
+                }
+            )
+            .Add(endpointBuilder =>
+            {
+                var finalPattern = ((RouteEndpointBuilder)endpointBuilder).RoutePattern.RawText;
+                externalCallbackEndpointName = $"{nameof(MapUnAuthApi)}-{finalPattern}";
+                endpointBuilder.Metadata.Add(new EndpointNameMetadata(externalCallbackEndpointName));
+                endpointBuilder.Metadata.Add(new RouteNameMetadata(externalCallbackEndpointName));
+            });
+			
         routeGroup.MapPost("/refresh", async Task<Results<Ok<AccessTokenResponse>, UnauthorizedHttpResult, SignInHttpResult, ChallengeHttpResult>>
             ([FromBody] RefreshRequest refreshRequest, [FromServices] IServiceProvider sp) =>
         {
@@ -531,7 +610,9 @@ public static partial class UnAuthRouteBuilderExtensions
         {
             Email = await userManager.GetEmailAsync(user) ?? throw new NotSupportedException("Users must have an email."),
             IsEmailConfirmed = await userManager.IsEmailConfirmedAsync(user),
-            Claims = claimsPrincipal.Claims.ToDictionary(c => c.Type, c => c.Value),
+            // have to pull out roles since they can bbe multiple
+            // Claims = claimsPrincipal.Claims.ToDictionary(c => c.Type, c => c.Value),
+            Claims = claimsPrincipal.Claims.Where(c => c.Type != ClaimTypes.Role).ToDictionary(c => c.Type, c => c.Value),
         };
     }
 
@@ -558,5 +639,48 @@ public static partial class UnAuthRouteBuilderExtensions
     private sealed class FromQueryAttribute : Attribute, IFromQueryMetadata
     {
         public string? Name => null;
+    }
+    
+    private static async Task<Results<RedirectHttpResult, EmptyHttpResult>> UnAuthExternalLogin<TUser>
+    (
+        HttpContext ctx,
+        SignInManager<TUser> signInManager,
+        TUser user,
+        string? returnUrl = null,
+        string? redirectUrl = null
+    ) where TUser : class, new()
+    {
+        redirectUrl ??= FrontEndUrl(UnAuthOptions.ExternalLoginFrontEndReturnUrl);
+        if (returnUrl is not null or "")
+            redirectUrl += "?returnUrl=" + returnUrl;
+        signInManager.PrimaryAuthenticationScheme = UnAuthConstants.AuthScheme;
+        await signInManager.SignInAsync(user, false, UnAuthConstants.AuthScheme);
+
+        // UnAuth puts the response in context
+        if (ctx.Items[UnAuthContextItems.Bearer] is UnAuthTokenResponse bearerToken)
+        {
+            var json = JsonSerializer.Serialize(bearerToken);
+            var options = new CookieOptions()
+            {
+                // Needed so that domain.com can access  the cookie set by api.domain.com
+                // Domain = "localhost",
+                Expires = DateTime.UtcNow.AddMinutes(5)
+            };
+
+            // TODO: Add Test for production and always set to true
+            if (ctx.Request.Scheme == "https")
+                options.Secure = true;
+
+            ctx.Response.Cookies.Append(UnAuthOptions.ExternalLoginTokenCookieName, json, options);
+            return TypedResults.Redirect(redirectUrl);
+        }
+        return TypedResults.Empty;
+    }
+
+    private static string FrontEndUrl(string url)
+    {
+        var result = UnAuthOptions.FrontEndBaseUrl ?? "";
+        result += url;
+        return result;
     }
 }

@@ -21,7 +21,7 @@ public static class UnAuthExtensions
         });
     
     public static AuthenticationBuilder AddUnAuthentication(this IServiceCollection services)
-        => services.AddAuthentication(UnAuthConstants.IdentityScheme).AddUnAuthSchemes();
+        => services.AddAuthentication(UnAuthConstants.AuthScheme).AddUnAuthSchemes();
     
     public static AuthenticationBuilder AddUnAuthentication(this IServiceCollection services, Action<AuthenticationOptions> configureOptions)
     {
@@ -50,31 +50,33 @@ public static class UnAuthExtensions
         ArgumentNullException.ThrowIfNull(configure);
 
         services
-            .AddAuthentication(UnAuthConstants.IdentityScheme)
+            .AddAuthentication(UnAuthConstants.AuthScheme)
             .AddUnAuthSchemes()
             .AddBearerToken(IdentityConstants.BearerScheme)
             .AddUnAuthCookies();
-        
-        return services.AddIdentityCore<TUser>(configure)
-            .AddUnAuthServices();
+
+        return services.AddIdentityCore<TUser>(configure).AddUnAuthIdentityServices();
     }
 
-    public static IdentityBuilder AddUnAuthServices(this IdentityBuilder builder)
+    public static IdentityBuilder AddUnAuthIdentityServices(this IdentityBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
         builder.AddApiEndpoints();
 
-        builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<UnAuthOptions>, UnAuthConfigureOptions>());
+        builder.Services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IConfigureOptions<UnAuthSchemeOptions>, UnAuthConfigureSchemeOptions>()
+        );
         builder.Services.AddScoped<UnAuthTokenService>();
 
         return builder;
     }
 
     public static AuthenticationBuilder AddUnAuthSchemes(this AuthenticationBuilder builder) =>
-        builder.AddScheme<UnAuthOptions, UnAuthHandler>(UnAuthConstants.IdentityScheme, _ => { })
-            .AddScheme<UnAuthOptions, UnAuthHandler>(IdentityConstants.TwoFactorUserIdScheme, _ => { })
-            .AddScheme<UnAuthOptions, UnAuthHandler>(IdentityConstants.TwoFactorRememberMeScheme, _ => { });
+        builder
+            .AddScheme<UnAuthSchemeOptions, UnAuthHandler>(UnAuthConstants.AuthScheme, _ => { })
+            .AddScheme<UnAuthSchemeOptions, UnAuthHandler>(IdentityConstants.TwoFactorUserIdScheme, _ => { })
+            .AddScheme<UnAuthSchemeOptions, UnAuthHandler>(IdentityConstants.TwoFactorRememberMeScheme, _ => { });
 }
 
 
@@ -88,9 +90,9 @@ public static class UnAuthCookieExtensions
     /// </summary>
     /// <param name="builder">The current <see cref="AuthenticationBuilder"/> instance.</param>
     /// <returns>The <see cref="IdentityCookiesBuilder"/> which can be used to configure the identity cookies.</returns>
-    public static IdentityCookiesBuilder AddUnAuthCookies(this AuthenticationBuilder builder)
-        => builder.AddUnAuthCookies(o => { });
- 
+    public static IdentityCookiesBuilder AddUnAuthCookies(this AuthenticationBuilder builder) =>
+        builder.AddUnAuthCookies(o => { });
+
     /// <summary>
     /// Adds the cookie authentication needed for sign in manager.
     /// </summary>

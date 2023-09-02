@@ -8,12 +8,12 @@ namespace UnAuth;
 
 internal sealed class UnAuthHandler(
     UnAuthTokenService tokenService,
-    IOptionsMonitor<UnAuthOptions> optionsMonitor,
+    IOptionsMonitor<UnAuthSchemeOptions> optionsMonitor,
     IAuthenticationSchemeProvider schemeProvider,
     IAuthenticationHandlerProvider handlers,
     ILoggerFactory loggerFactory,
     UrlEncoder urlEncoder
-) : SignInAuthenticationHandler<UnAuthOptions>(optionsMonitor, loggerFactory, urlEncoder)
+) : SignInAuthenticationHandler<UnAuthSchemeOptions>(optionsMonitor, loggerFactory, urlEncoder)
 {
     private static readonly AuthenticateResult FailedUnprotectingToken = AuthenticateResult.Fail(
         "Unprotected token failed"
@@ -27,7 +27,7 @@ internal sealed class UnAuthHandler(
         // the options cannot be overridden by request
         if (Options.AllowedSchemes == UnAuthSchemes.Bearer) return false;
         
-        if (Context.Items.TryGetValue(UnAuthContextItems.CookieMode, out var obj) && obj is bool mode)
+        if (Context.Items[UnAuthContextItems.CookieMode] is bool mode)
         {
             return mode;
         }
@@ -41,7 +41,7 @@ internal sealed class UnAuthHandler(
     {
         var cookieMode = CookieMode();
 
-        if (Scheme.Name == UnAuthConstants.IdentityScheme)
+        if (Scheme.Name == UnAuthConstants.AuthScheme)
         {
 
             if (cookieMode is not true && BearerMode())
@@ -156,7 +156,7 @@ internal sealed class UnAuthHandler(
     {
         var cookieMode = CookieMode();
 
-        if (Scheme.Name == UnAuthConstants.IdentityScheme)
+        if (Scheme.Name == UnAuthConstants.AuthScheme)
         {           
             if (cookieMode is not false)
             {
@@ -226,7 +226,7 @@ internal sealed class UnAuthHandler(
     {
         var cookieMode = CookieMode();
 
-        if (Scheme.Name == UnAuthConstants.IdentityScheme)
+        if (Scheme.Name == UnAuthConstants.AuthScheme)
         {
             if (cookieMode is not false && await schemeProvider.GetSchemeAsync(IdentityConstants.ApplicationScheme) is not null)
             {
