@@ -12,7 +12,7 @@ Content-Type: application/json
 
 ### login and get token
 # @name auth
-POST /identity/unauthlogin
+POST /identity/unlogin
 Content-Type: application/json
 {
   "username": "{{email}}",
@@ -53,7 +53,7 @@ GET /cookieonly
 GET /cookieonly
 Authorization: Bearer {{ auth.access_token }}
 
-
+# these are here to ensure the authorization overrides work
 
 
 ### test token only endpoint with token

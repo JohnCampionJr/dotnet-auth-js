@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Globalization;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.TestHost;
@@ -43,12 +44,12 @@ public partial class UnAuthMapIdentityApiTests
     [Theory]
     [InlineData(null)]
     [InlineData("")]
-    public async Task LoginFailsGivenNoUsername(string username)
+    public async Task LoginFailsGivenNoEmail(string email)
     {
         await using var app = await CreateAppAsync();
         using var client = app.GetTestClient();
 
-        var result = await client.PostAsJsonAsync("/identity/unlogin", new { Username = username, Password });
+        var result = await client.PostAsJsonAsync("/identity/unlogin", new { email, Password });
         AssertBadRequestAndEmpty(result);
     }
 
@@ -60,7 +61,7 @@ public partial class UnAuthMapIdentityApiTests
         await using var app = await CreateAppAsync();
         using var client = app.GetTestClient();
 
-        var result = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password = password });
+        var result = await client.PostAsJsonAsync("/identity/unlogin", new { Email, Password = password });
         AssertBadRequestAndEmpty(result);
     }
     
@@ -72,43 +73,43 @@ public partial class UnAuthMapIdentityApiTests
         using var client = app.GetTestClient();
 
         await RegisterAsync(client);
-        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password });
+        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin", new { Email, Password });
 
         var loginContent = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
         var accessToken = loginContent.GetProperty("access_token").GetString();
         var refreshToken = loginContent.GetProperty("refresh_token").GetString();
 
-        AssertUnauthorizedAndEmpty(await client.GetAsync("/identity/account/2fa"));
+        AssertUnauthorizedAndEmpty(await client.PostAsJsonAsync("/identity/manage/2fa", new object()));
 
         client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
 
         // We cannot enable 2fa without verifying we can produce a valid
-        await AssertValidationProblemAsync(await client.PostAsJsonAsync("/identity/account/2fa", new { Enable = true }),
+        await AssertValidationProblemAsync(await client.PostAsJsonAsync("/identity/manage/2fa", new { Enable = true }),
             "RequiresTwoFactor");
         await AssertValidationProblemAsync(
-            await client.PostAsJsonAsync("/identity/account/2fa", new { Enable = true, TwoFactorCode = "wrong" }),
+            await client.PostAsJsonAsync("/identity/manage/2fa", new { Enable = true, TwoFactorCode = "wrong" }),
             "InvalidTwoFactorCode");
 
-        var twoFactorKeyResponse = await client.GetFromJsonAsync<JsonElement>("/identity/account/2fa");
-        Assert.False(twoFactorKeyResponse.GetProperty("isTwoFactorEnabled").GetBoolean());
-        Assert.False(twoFactorKeyResponse.GetProperty("isMachineRemembered").GetBoolean());
+        var twoFactorKeyResponse = await client.PostAsJsonAsync("/identity/manage/2fa", new object());
+        var twoFactorKeyContent = await twoFactorKeyResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(twoFactorKeyContent.GetProperty("isTwoFactorEnabled").GetBoolean());
+        Assert.False(twoFactorKeyContent.GetProperty("isMachineRemembered").GetBoolean());
 
-        var sharedKey = twoFactorKeyResponse.GetProperty("sharedKey").GetString();
+        var sharedKey = twoFactorKeyContent.GetProperty("sharedKey").GetString();
 
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null)
-            .ToString();
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
 
         var enable2faResponse =
-            await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true });
+            await client.PostAsJsonAsync("/identity/manage/2fa", new { twoFactorCode, Enable = true });
         var enable2faContent = await enable2faResponse.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(enable2faContent.GetProperty("isTwoFactorEnabled").GetBoolean());
         Assert.False(enable2faContent.GetProperty("isMachineRemembered").GetBoolean());
 
         // We can still access auth'd endpoints with old access token.
-        Assert.Equal($"Hello, {Username}!", await client.GetStringAsync("/auth/hello"));
+        Assert.Equal($"Hello, {Email}!", await client.GetStringAsync("/auth/hello"));
 
         // But the refresh token is invalidated by the security stamp.
         AssertUnauthorizedAndEmpty(await client.PostAsJsonAsync("/identity/refresh", new { refreshToken }));
@@ -116,7 +117,7 @@ public partial class UnAuthMapIdentityApiTests
         client.DefaultRequestHeaders.Clear();
         
         // changes start here for two step
-        var twoFactorStep1 = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password });
+        var twoFactorStep1 = await client.PostAsJsonAsync("/identity/unlogin", new { Email, Password });
         var twoFactorContent = await twoFactorStep1.Content.ReadFromJsonAsync<JsonElement>();
         AssertProblemWithJson(twoFactorStep1, twoFactorContent, "RequiresTwoFactor");
         ApplyCookiesMaybe(client, twoFactorStep1);
@@ -135,21 +136,22 @@ public partial class UnAuthMapIdentityApiTests
         using var client = app.GetTestClient();
 
         await RegisterAsync(client);
-        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password });
+        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin", new { Email, Password });
 
         var loginContent = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
         var accessToken = loginContent.GetProperty("access_token").GetString();
         client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
 
-        var twoFactorKeyResponse = await client.GetFromJsonAsync<JsonElement>("/identity/account/2fa");
-        var sharedKey = twoFactorKeyResponse.GetProperty("sharedKey").GetString();
-
+        var twoFactorKeyResponse = await client.PostAsJsonAsync("/identity/manage/2fa", new object());
+        var twoFactorKeyContent = await twoFactorKeyResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var sharedKey = twoFactorKeyContent.GetProperty("sharedKey").GetString();
+        
         var keyBytes = Base32.FromBase32(sharedKey);
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var timestep = Convert.ToInt64(unixTimestamp / 30);
-        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString();
-
-        var enable2faResponse = await client.PostAsJsonAsync("/identity/account/2fa", new { twoFactorCode, Enable = true });
+        var twoFactorCode = Rfc6238AuthenticationService.ComputeTotp(keyBytes, (ulong)timestep, modifierBytes: null).ToString(CultureInfo.InvariantCulture);
+        
+        var enable2faResponse = await client.PostAsJsonAsync("/identity/manage/2fa", new { twoFactorCode, Enable = true });
         var enable2faContent = await enable2faResponse.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(enable2faContent.GetProperty("isTwoFactorEnabled").GetBoolean());
 
@@ -159,7 +161,7 @@ public partial class UnAuthMapIdentityApiTests
         client.DefaultRequestHeaders.Clear();
 
         // changes start here for two step
-        var twoFactorStep1 = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password });
+        var twoFactorStep1 = await client.PostAsJsonAsync("/identity/unlogin", new { Email, Password });
         var twoFactorContent = await twoFactorStep1.Content.ReadFromJsonAsync<JsonElement>();
         AssertProblemWithJson(twoFactorStep1, twoFactorContent, "RequiresTwoFactor");
         ApplyCookiesMaybe(client, twoFactorStep1);
@@ -177,13 +179,13 @@ public partial class UnAuthMapIdentityApiTests
 
         client.DefaultRequestHeaders.Authorization = new("Bearer", recoveryAccessToken);
 
-        var disable2faResponse = await client.PostAsJsonAsync("/identity/account/2fa", new { Enable = false });
+        var disable2faResponse = await client.PostAsJsonAsync("/identity/manage/2fa", new { Enable = false });
         var disable2faContent = await disable2faResponse.Content.ReadFromJsonAsync<JsonElement>();
         Assert.False(disable2faContent.GetProperty("isTwoFactorEnabled").GetBoolean());
 
         client.DefaultRequestHeaders.Clear();
 
-        AssertOk(await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password }));
+        AssertOk(await client.PostAsJsonAsync("/identity/unlogin", new { Email, Password }));
     }
     
     [Fact]
@@ -193,7 +195,7 @@ public partial class UnAuthMapIdentityApiTests
         using var client = app.GetTestClient();
 
         await RegisterAsync(client);
-        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin", new { Username, Password });
+        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin", new { Email, Password });
 
         loginResponse.EnsureSuccessStatusCode();
 
@@ -206,7 +208,7 @@ public partial class UnAuthMapIdentityApiTests
         Assert.Equal(3600, expiresIn);
 
         client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
-        Assert.Equal($"Bearer: Hello, {Username}!", await client.GetStringAsync("/bearer"));
+        Assert.Equal($"Bearer: Hello, {Email}!", await client.GetStringAsync("/bearer"));
         AssertUnauthorizedAndEmpty(await client.GetAsync($"/cookie"));
     }
 
@@ -217,13 +219,13 @@ public partial class UnAuthMapIdentityApiTests
         using var client = app.GetTestClient();
 
         await RegisterAsync(client);
-        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin?cookieMode=true", new { Username, Password });
+        var loginResponse = await client.PostAsJsonAsync("/identity/unlogin?useCookies=true", new { Email, Password });
 
         loginResponse.EnsureSuccessStatusCode();
 
         ApplyCookiesMaybe(client, loginResponse);
 
-        Assert.Equal($"Cookie: Hello, {Username}!", await client.GetStringAsync("/cookie"));
+        Assert.Equal($"Cookie: Hello, {Email}!", await client.GetStringAsync("/cookie"));
         AssertUnauthorizedAndEmpty(await client.GetAsync($"/bearer"));
     }
     

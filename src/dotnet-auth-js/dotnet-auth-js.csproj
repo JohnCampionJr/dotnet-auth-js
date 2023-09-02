@@ -20,6 +20,7 @@
     <Compile Remove="DTO\IdentityEndpointsJsonSerializerContext.cs" />
     <Compile Remove="MyIdentityConstants.cs" />
     <Compile Remove="CompositeIdentityHandler.cs" />
+    <Compile Remove="dotnet8-original\IdentityApiEndpointRouteBuilderExtensions.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,6 +34,11 @@
   <ItemGroup>
     <None Remove="jcamp.BearerToken\**" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="dotnet8-original\" />
+  </ItemGroup>
+
 
 
 </Project>

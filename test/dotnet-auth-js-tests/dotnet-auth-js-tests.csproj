@@ -27,6 +27,14 @@
 	<ProjectReference Include="..\..\src\dotnet-auth-js\dotnet-auth-js.csproj" />
 	<ProjectReference Include="..\Microsoft.AspNetCore.Testing\src\Microsoft.AspNetCore.Testing.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="dotnet8-original\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="dotnet8-original\MapIdentityApiTests.cs" />
+  </ItemGroup>
   <Import Project="$(MvcTestingTargets)" Condition="'$(MvcTestingTargets)' != ''" />
 
 </Project>

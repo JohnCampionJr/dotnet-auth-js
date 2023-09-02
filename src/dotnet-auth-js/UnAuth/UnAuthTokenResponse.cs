@@ -42,5 +42,6 @@ public sealed class UnAuthTokenResponse
     [JsonPropertyName("refresh_token")]
     public string? RefreshToken { get; init; }
     
+    [JsonPropertyName("remember_token")]
     public string? RememberToken { get; set; }
 }

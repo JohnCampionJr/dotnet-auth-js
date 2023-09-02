@@ -1,11 +1,6 @@
-using Microsoft.AspNetCore.Authentication.BearerToken;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.Net.Http.Headers;
 using System.Security.Claims;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,7 +36,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGroup("/identity").MyMapIdentityApi<ApplicationUser>();
+app.MapGroup("/identity").MapUnAuthApi<ApplicationUser>();
 
 app.MapGet("/cookieonly", (ClaimsPrincipal user) => $"With Cookie: Hello, {user.Identity?.Name}!")
     .RequireAuthorization(UnAuthPolicies.CookieOnly);
